@@ -129,10 +129,42 @@ mlxlm run gemma3:27b --chat plain --max-tokens 512
 
 ### 🏷️ Manage model aliases:
 
-```bash
-# 🔧 Interactive alias assignment
-mlxlm alias
+#### 🎯 Interactive menu mode (recommended):
 
+```bash
+mlxlm alias
+```
+
+This launches an interactive menu where you can:
+1. **Browse installed models** with their current aliases
+2. **Select a model** by entering its number
+3. **Add/edit alias** by typing a new name, or **remove** by pressing Enter with no input
+4. **Confirm changes** and return to the menu for more operations
+
+**Example flow:**
+```
+🧠 Installed models:
+
+1. models--google--gemma-3-27b-it  [gemma3]
+2. models--meta--llama3-8b  [No alias]
+0. Exit
+
+💡 Tip: You can type /exit at any time to cancel the operation.
+
+Enter model number: 1
+Enter new alias to add or change, or leave blank to remove:
+(Current: 'gemma3')
+> gpt
+Assign alias 'gpt' to 'models--google--gemma-3-27b-it'? [(y)/n]: y
+✅ Alias 'gpt' changed successfully!
+
+🧠 Installed models:
+...
+```
+
+#### 🔧 CLI alias commands:
+
+```bash
 # ➕ Add alias for a model
 mlxlm alias add <model-name> <alias>
 
