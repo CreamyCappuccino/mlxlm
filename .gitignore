@@ -42,6 +42,11 @@ env/
 *.log
 logs/
 
+# Test coverage
+.coverage
+htmlcov/
+.pytest_cache/
+
 # Local alias configuration
 .mlxlm_aliases.json
 
