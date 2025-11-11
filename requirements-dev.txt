@@ -1,0 +1,11 @@
+# Development dependencies for mlxlm
+# Install with: pip install -r requirements-dev.txt
+
+# Testing framework
+pytest>=7.4.0
+pytest-mock>=3.11.0
+
+# Code coverage
+pytest-cov>=4.1.0
+
+# Test utilities
