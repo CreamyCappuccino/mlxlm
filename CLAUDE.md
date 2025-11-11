@@ -40,7 +40,8 @@ This document defines the collaborative workflow between **Claude Cloud** and **
    - Make code changes, updates, and improvements
 
 2. **Before finishing a session**
-   - ✅ Merge session branch into `dev` branch on GitHub
+   - ✅ Merge session branch into `dev` branch on GitHub (via CLI: `git merge` + `git push`)
+   - ✅ Default: Direct merge (no PR needed unless explicitly requested)
    - ✅ Ensure `dev` is updated with all work
    - ❌ **DO NOT** push session branch directly to local
    - ❌ **DO NOT** assume local will cherry-pick changes
