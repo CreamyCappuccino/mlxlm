@@ -37,7 +37,7 @@ This document defines the collaborative workflow between **Claude Cloud** and **
 ### Claude Cloud Responsibilities
 1. **During session (session branch)**
    - Work on features/fixes in temporary session branch
-   - Create tags, documentation, release notes in session branch
+   - Make code changes, updates, and improvements
 
 2. **Before finishing a session**
    - ✅ Merge session branch into `dev` branch on GitHub
@@ -46,7 +46,7 @@ This document defines the collaborative workflow between **Claude Cloud** and **
    - ❌ **DO NOT** assume local will cherry-pick changes
 
 3. **When done**
-   - Confirm `dev` on GitHub is up-to-date
+   - Confirm `dev` on GitHub is up-to-date with all changes
 
 ### Claude Local Responsibilities
 1. **Synchronization**
@@ -103,14 +103,15 @@ If it does:
 ## 📝 Release Process
 
 1. **Claude Cloud** (in session)
-   - Create tag (e.g., `v0.2.0`)
-   - Write release notes
-   - Merge everything to `dev`
+   - Complete all code/feature changes for release
+   - Merge everything to `dev` on GitHub
 
 2. **Claude Local** (after pull)
-   - Pull all changes including tags
+   - Pull all changes from `dev`
+   - Create and push tags (e.g., `v0.2.0`)
+   - Write release notes
    - Create GitHub Release from tag
-   - Publish release notes
+   - Publish release
 
 ---
 
@@ -119,18 +120,18 @@ If it does:
 **Claude Cloud session:**
 ```
 1. Create work in session branch
-2. Add tag: v0.2.0
-3. Create RELEASE_NOTES_v0.2.0.md
-4. Merge session → dev on GitHub
+2. Merge session → dev on GitHub
 ```
 
 **Claude Local:**
 ```
 1. git fetch origin
 2. git pull origin dev
-3. (Get tag, release notes, everything)
-4. gh release create v0.2.0 -F RELEASE_NOTES_v0.2.0.md
-5. GitHub Release published ✅
+3. git tag -a v0.2.0 -m "Release message"
+4. git push origin v0.2.0
+5. Create release notes (RELEASE_NOTES_v0.2.0.md)
+6. gh release create v0.2.0 -F RELEASE_NOTES_v0.2.0.md
+7. GitHub Release published ✅
 ```
 
 ---
