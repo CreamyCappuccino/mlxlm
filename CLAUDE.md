@@ -40,9 +40,10 @@ This document defines the collaborative workflow between **Claude Cloud** and **
    - Make code changes, updates, and improvements
 
 2. **Before finishing a session**
-   - ✅ Merge session branch into `dev` branch on GitHub (via CLI: `git merge` + `git push`)
-   - ✅ Default: Direct merge (no PR needed unless explicitly requested)
-   - ✅ Ensure `dev` is updated with all work
+   - ✅ Push session branch to GitHub
+   - ✅ Ensure all work is committed in session branch
+   - ⚠️ **NOTE**: Claude Local will merge session → `dev` and push to GitHub
+   - ⚠️ **Permissions**: Claude Cloud cannot push to `dev` directly (403 restriction)
    - ❌ **DO NOT** push session branch directly to local
    - ❌ **DO NOT** assume local will cherry-pick changes
 
@@ -90,12 +91,13 @@ This document defines the collaborative workflow between **Claude Cloud** and **
 
 ### Scenario 1: Claude Cloud finishes work
 ```
-Claude Cloud                    GitHub                    Claude Local
-   (session)        ────────────→  (dev)  ←─────────  (dev)
-     [merge]
+Claude Cloud        GitHub session        GitHub dev        Claude Local
+   (session)  ────→  (session) ────→   (merged by Local)  ←──── (pull)
+              [push]              [merge + push by Local]
 ```
-1. Claude Cloud merges session → `dev`
-2. Claude Local: `git pull origin dev` (gets everything)
+1. Claude Cloud pushes session → GitHub session
+2. Claude Local pulls GitHub session, merges to `dev`, pushes to GitHub
+3. Claude Cloud pulls `dev` in next session (gets everything)
 
 ### Scenario 2: Claude Local makes changes
 ```
