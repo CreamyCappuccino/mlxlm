@@ -47,7 +47,6 @@ This document defines the collaborative workflow between **Claude Cloud** and **
 
 3. **When done**
    - Confirm `dev` on GitHub is up-to-date
-   - Leave a note in memory (MM290 or similar) about what was merged
 
 ### Claude Local Responsibilities
 1. **Synchronization**
@@ -113,10 +112,6 @@ If it does:
    - Create GitHub Release from tag
    - Publish release notes
 
-3. **Update memory**
-   - Document release status in MM290 or related memory
-   - Record what version is published
-
 ---
 
 ## 🚀 Example: v0.2.0 Release
@@ -137,22 +132,6 @@ If it does:
 4. gh release create v0.2.0 -F RELEASE_NOTES_v0.2.0.md
 5. GitHub Release published ✅
 ```
-
----
-
-## 💾 Memory System (MCPMemoryForAIiOS)
-
-**Related memories:**
-- **MM259**: Release plan & version strategy
-- **MM290**: Release navigation & status
-- **MM261**: Release history & execution records
-- **MM291**: Pre-release inspection report
-
-**Update MM290 after each sync** to record:
-- Latest `dev` commit hash
-- What was pulled/pushed
-- Next steps
-- Any blockers
 
 ---
 
@@ -177,7 +156,6 @@ Before ending a session:
 - [ ] Session branch merged to `dev` on GitHub
 - [ ] Tags created (if releasing)
 - [ ] Release notes/documentation added to `dev`
-- [ ] Memory (MM290) updated with status
 - [ ] `dev` branch is up-to-date and clean
 
 ## ✅ Checklist for Claude Local
@@ -186,7 +164,6 @@ Before starting work:
 - [ ] `git fetch origin && git pull origin dev`
 - [ ] Check for new tags: `git tag -l`
 - [ ] Review latest commits: `git log -5 --oneline`
-- [ ] Update memory with current status
 
 ---
 
@@ -197,6 +174,3 @@ Before starting work:
 - `RELEASE_NOTES_v0.2.0.md`: Release documentation
 
 ---
-
-**Last updated**: 2025-11-12
-**Status**: Active (v0.2.0 release complete)
