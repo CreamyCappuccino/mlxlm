@@ -46,7 +46,23 @@ This document defines the collaborative workflow between **Claude Cloud** and **
    - ❌ **DO NOT** push session branch directly to local
    - ❌ **DO NOT** assume local will cherry-pick changes
 
-3. **When done**
+3. **Session branch push (optional)**
+
+   **When to push session branch to GitHub:**
+   - ✅ Creating a PR (need to review changes in GitHub Web UI)
+   - ✅ Want to backup work-in-progress to GitHub
+   - ✅ Local needs to inspect session branch contents
+   - ✅ Collaborating with others on the session branch
+
+   **When NOT to push session branch:**
+   - ⏭️ Using direct merge to `dev` (session branch stays local)
+   - ⏭️ Session branch is purely temporary/throwaway
+   - ⏭️ All work will go to `dev` immediately
+   - ⏭️ No need for PR review process
+
+   **Note:** Session branches are temporary by design. Once merged to `dev`, they can be deleted from both local and remote.
+
+4. **When done**
    - Confirm `dev` on GitHub is up-to-date with all changes
 
 ### Claude Local Responsibilities
