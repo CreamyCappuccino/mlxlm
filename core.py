@@ -22,7 +22,7 @@ def resolve_model_name(name_or_alias, alias_dict):
         if resolved.lower().startswith("models--"):
             return resolved.replace("models--", "", 1).replace("--", "/")
         return resolved
-    if "/" not in name_or_alias and name_or_alias.count("-") >= 2:
+    if "/" not in name_or_alias and name_or_alias.count("-") >= 2 and not name_or_alias.startswith("models--"):
         parts = name_or_alias.split("-", 2)
         org = f"{parts[0]}-{parts[1]}"
         repo = parts[2]
