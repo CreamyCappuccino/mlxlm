@@ -5,7 +5,7 @@
 
 import argparse
 
-def build_parser():
+def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="mlxlm: Local model management tool for MLX")
     subparsers = parser.add_subparsers(dest="command")
 
