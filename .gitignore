@@ -66,3 +66,7 @@ backup/
 # macOS and Claude Code
 .DS_Store
 .claude/
+
+# Release workflow (Cloud session notes, not part of release)
+RELEASE_NOTES_*.md
+TAG_*.md
