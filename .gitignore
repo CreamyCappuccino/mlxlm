@@ -58,6 +58,7 @@ htmlcov/
 trm_exp/
 SELLM/
 run_experiment.sh
+run_experiment_test_for_tre_exp.sh
 
 # Personal setup scripts and backups
 mlxlm.sh
