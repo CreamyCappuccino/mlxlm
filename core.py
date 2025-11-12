@@ -3,6 +3,8 @@
 
 """Core utilities for model resolution, config loading, and chat rendering."""
 
+from __future__ import annotations
+
 import os, sys, json, inspect, importlib
 from pathlib import Path
 from importlib import resources

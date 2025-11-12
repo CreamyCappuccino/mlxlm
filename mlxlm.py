@@ -4,6 +4,8 @@
 
 """mlxlm - Local model management CLI for MLX."""
 
+from __future__ import annotations
+
 __version__ = "0.2.0"
 
 import sys
