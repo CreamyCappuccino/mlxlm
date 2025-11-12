@@ -1,9 +1,15 @@
+# Copyright (c) 2025 MLX-LM Contributors
+# Licensed under the MIT License. See LICENSE file in the project root for details.
+
+"""Core utilities for model resolution, config loading, and chat rendering."""
+
 import os, sys, json, inspect, importlib
 from pathlib import Path
 from importlib import resources
 from huggingface_hub import HfApi
 
 # ===== Alias/Paths =====
+HF_CACHE_PATH = os.path.expanduser("~/.cache/huggingface/hub")
 alias_file_path = os.path.join(os.path.dirname(__file__), ".mlxlm_aliases.json")
 
 def load_alias_dict() -> dict:
@@ -62,7 +68,7 @@ def load_config_for_model(model_id: str) -> dict:
                 return cfg
         except Exception:
             pass
-    cache_root = Path.home() / ".cache" / "huggingface" / "hub"
+    cache_root = Path(HF_CACHE_PATH)
     model_dir = cache_root / model_id
     snap_base = model_dir / "snapshots"
     if not snap_base.exists():

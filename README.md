@@ -185,6 +185,42 @@ mlxlm doctor
 
 ---
 
+## ⚙️ Environment Variables
+
+mlxlm supports several environment variables for advanced configuration:
+
+| Variable | Description | Default | Example |
+|----------|-------------|---------|---------|
+| `MLXLM_DEBUG` | Enable debug output (prints internal state, prompt details, etc.) | `0` (off) | `export MLXLM_DEBUG=1` |
+| `MLXLM_OFFLINE` | Force offline mode (skip HuggingFace API calls, use local cache only) | `0` (off) | `export MLXLM_OFFLINE=1` |
+| `MLXLM_RENDERER` | Custom Harmony renderer module path (format: `module:attribute`) | Auto-detect | `export MLXLM_RENDERER=openai_harmony:render_chat` |
+| `MLXLM_REMEMBER_ASSISTANT` | Force conversation history mode (remember assistant responses) | Follows `--history` flag | `export MLXLM_REMEMBER_ASSISTANT=1` |
+| `MLXLM_STOP` | Additional stop sequences (comma-separated) | None | `export MLXLM_STOP="STOP,END"` |
+| `MLXLM_NO_DEFAULT_STOPS` | Disable default stop sequences for Harmony mode (`<\|end\|>`, `<\|start\|>`) | `0` (off) | `export MLXLM_NO_DEFAULT_STOPS=1` |
+| `MLXLM_KV_BYTES` | KV cache dtype size in bytes (1=int8, 2=float16, 4=float32) for memory estimation | `2` (float16) | `export MLXLM_KV_BYTES=4` |
+
+**Example usage:**
+
+```bash
+# Enable debug mode to see internal processing
+export MLXLM_DEBUG=1
+mlxlm run gemma3:27b
+
+# Use offline mode (no HuggingFace API calls)
+export MLXLM_OFFLINE=1
+mlxlm show gemma3:27b
+
+# Add custom stop sequences
+export MLXLM_STOP="### END,<|stop|>"
+mlxlm run gemma3:27b
+
+# Override Harmony renderer detection
+export MLXLM_RENDERER=openai_harmony:render_chat
+mlxlm run gemma3:27b --chat harmony
+```
+
+---
+
 ## 📁 Folder Structure
 
 ```

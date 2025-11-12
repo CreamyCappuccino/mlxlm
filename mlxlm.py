@@ -1,4 +1,11 @@
 #!/usr/bin/env python3
+# Copyright (c) 2025 MLX-LM Contributors
+# Licensed under the MIT License. See LICENSE file in the project root for details.
+
+"""mlxlm - Local model management CLI for MLX."""
+
+__version__ = "0.2.0"
+
 import sys
 from cli_flags import build_parser
 from core import load_alias_dict, resolve_model_name, _preflight_and_maybe_adjust_chat

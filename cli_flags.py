@@ -1,3 +1,8 @@
+# Copyright (c) 2025 MLX-LM Contributors
+# Licensed under the MIT License. See LICENSE file in the project root for details.
+
+"""Command-line argument parser and flag definitions for mlxlm."""
+
 import argparse
 
 def build_parser():
