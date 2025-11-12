@@ -3,6 +3,8 @@
 
 """Command implementations for mlxlm CLI: list, show, pull, remove, run, alias, doctor."""
 
+from __future__ import annotations
+
 import os, sys, json, time, subprocess
 from datetime import datetime
 

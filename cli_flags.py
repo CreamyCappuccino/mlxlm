@@ -3,6 +3,8 @@
 
 """Command-line argument parser and flag definitions for mlxlm."""
 
+from __future__ import annotations
+
 import argparse
 
 def build_parser() -> argparse.ArgumentParser:
