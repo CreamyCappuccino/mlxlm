@@ -194,3 +194,18 @@ Before starting work:
 - `RELEASE_NOTES_v0.2.0.md`: Release documentation
 
 ---
+
+## 📌 Memory Management for Claude Instances
+
+**Hub Memory**: Central navigation point, links to plan only
+- Example: MM290 → MM259 (plan)
+
+**Detail Memories**: Link to hub + directly related detail memory
+- MM291 (report) → MM290, MM259
+- MM294 (result) → MM290, MM291 (same report)
+- MM295 (result) → MM290, MM291 (same report)
+- MM297 (execution) → MM290 only (no direct dependency)
+
+**Rule**: Link only when there's actual sequential or dependency relationship. Avoid forcing chains.
+
+---
