@@ -11,7 +11,7 @@ from cli_flags import build_parser
 from core import load_alias_dict, resolve_model_name, _preflight_and_maybe_adjust_chat
 from commands import list_models, show_info, pull_model, remove_models, cmd_doctor, run_model
 
-def main():
+def main() -> None:
     parser = build_parser()
     try:
         args = parser.parse_args()

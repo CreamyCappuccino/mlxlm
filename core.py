@@ -16,11 +16,21 @@ def load_alias_dict() -> dict:
     try:
         with open(alias_file_path, "r") as f:
             return json.load(f)
-    except Exception:
+    except (FileNotFoundError, json.JSONDecodeError, PermissionError):
         return {}
 
 # ===== Name resolution =====
-def resolve_model_name(name_or_alias, alias_dict):
+def resolve_model_name(name_or_alias: str, alias_dict: dict) -> str:
+    """
+    Resolve a user input (alias, repo ID, or cache key) to a canonical repo ID.
+
+    Args:
+        name_or_alias: User input string (e.g., 'gemma3', 'google/gemma-3-27b', 'models--google--gemma-3-27b')
+        alias_dict: Dictionary mapping cache keys to aliases
+
+    Returns:
+        Canonical repo ID (e.g., 'google/gemma-3-27b-it')
+    """
     user_input = name_or_alias.lower()
     alias_map_lower = {alias.lower(): full_name for full_name, alias in alias_dict.items()}
     if user_input in alias_map_lower:
@@ -41,6 +51,15 @@ def resolve_model_name(name_or_alias, alias_dict):
     return name_or_alias
 
 def repo_to_cache_name(repo_id: str) -> str:
+    """
+    Convert a repo ID to HuggingFace cache directory name format.
+
+    Args:
+        repo_id: Repository ID (e.g., 'google/gemma-3-27b')
+
+    Returns:
+        Cache key format (e.g., 'models--google--gemma-3-27b')
+    """
     if repo_id.startswith("models--"):
         return repo_id
     if "/" in repo_id:
@@ -49,6 +68,16 @@ def repo_to_cache_name(repo_id: str) -> str:
     return repo_id
 
 def resolve_to_cache_key(name_or_alias: str, alias_dict: dict) -> str:
+    """
+    Resolve any user input to a cache key (models--org--repo format).
+
+    Args:
+        name_or_alias: User input (alias, repo ID, or cache key)
+        alias_dict: Dictionary mapping cache keys to aliases
+
+    Returns:
+        Cache key in models--org--repo format
+    """
     user = name_or_alias.strip()
     lower = user.lower()
     alias_map_lower = {alias.lower(): full_name for full_name, alias in alias_dict.items()}
@@ -61,12 +90,23 @@ def resolve_to_cache_key(name_or_alias: str, alias_dict: dict) -> str:
 
 # ===== Config loader (HF / local cache) =====
 def load_config_for_model(model_id: str) -> dict:
+    """
+    Load model config.json from HuggingFace API or local cache.
+
+    Args:
+        model_id: Model cache key (e.g., 'models--google--gemma-3-27b')
+
+    Returns:
+        Dictionary containing model configuration, or empty dict if not found
+    """
     if os.getenv("MLXLM_OFFLINE") != "1":
         try:
             cfg = HfApi().model_info(model_id).config
             if isinstance(cfg, dict):
                 return cfg
-        except Exception:
+        except (ConnectionError, TimeoutError, ValueError, KeyError) as e:
+            if os.getenv("MLXLM_DEBUG") == "1":
+                print(f"[DEBUG] HF API call failed: {e}")
             pass
     cache_root = Path(HF_CACHE_PATH)
     model_dir = cache_root / model_id
@@ -80,12 +120,20 @@ def load_config_for_model(model_id: str) -> dict:
             try:
                 with open(cfg_path) as f:
                     return json.load(f)
-            except Exception:
+            except (json.JSONDecodeError, PermissionError, OSError) as e:
+                if os.getenv("MLXLM_DEBUG") == "1":
+                    print(f"[DEBUG] Failed to load {cfg_path}: {e}")
                 continue
     return {}
 
 # ===== Runtime / Harmony detection =====
-def _probe_mlx_runtime():
+def _probe_mlx_runtime() -> tuple[bool, str, str | None]:
+    """
+    Probe MLX runtime availability and check libmlx.dylib.
+
+    Returns:
+        Tuple of (success: bool, info_message: str, lib_path: str | None)
+    """
     try:
         base = resources.files('mlx')
         lib  = base / 'lib' / 'libmlx.dylib'
@@ -97,6 +145,16 @@ def _probe_mlx_runtime():
         return (False, str(e), None)
 
 def _get_model_type(model_name: str, alias_dict: dict) -> str | None:
+    """
+    Extract model_type from model configuration.
+
+    Args:
+        model_name: Model name or alias
+        alias_dict: Alias dictionary
+
+    Returns:
+        Model type string (e.g., 'gpt_oss', 'llama'), or None if not found
+    """
     try:
         repo_id = resolve_model_name(model_name, alias_dict)
         cache_key = repo_to_cache_name(repo_id)
@@ -109,10 +167,21 @@ def _get_model_type(model_name: str, alias_dict: dict) -> str | None:
             if isinstance(arch, list) and arch:
                 return str(arch[0]).strip().lower()
         return None
-    except Exception:
+    except (KeyError, ValueError, TypeError) as e:
+        if os.getenv("MLXLM_DEBUG") == "1":
+            print(f"[DEBUG] Failed to get model type for {model_name}: {e}")
         return None
 
-def _load_callable_from_path(spec: str):
+def _load_callable_from_path(spec: str) -> callable | None:
+    """
+    Load a callable (function or class method) from a module path specification.
+
+    Args:
+        spec: Module path in format 'module.path' or 'module.path:attribute'
+
+    Returns:
+        Callable object if found, None otherwise
+    """
     if not spec:
         return None
     if ":" in spec:
@@ -153,7 +222,16 @@ def _load_callable_from_path(spec: str):
             return None
     return obj if callable(obj) else None
 
-def _detect_harmony_renderer():
+def _detect_harmony_renderer() -> callable | None:
+    """
+    Detect and load Harmony chat renderer from installed packages.
+
+    Checks MLXLM_RENDERER environment variable first, then searches for
+    openai-harmony, openai.harmony, or harmony packages.
+
+    Returns:
+        Callable renderer function if found, None otherwise
+    """
     env_spec = os.getenv("MLXLM_RENDERER", "").strip()
     if env_spec:
         fn = _load_callable_from_path(env_spec)
@@ -204,6 +282,20 @@ def _detect_harmony_renderer():
     return None
 
 def _preflight_and_maybe_adjust_chat(chat_mode: str, model_name: str, alias_dict: dict) -> str:
+    """
+    Validate runtime environment and adjust chat mode if needed.
+
+    Performs MLX runtime checks and automatically switches to Harmony mode
+    for gpt_oss models.
+
+    Args:
+        chat_mode: Requested chat mode ('auto', 'harmony', 'hf', 'plain')
+        model_name: Model name or alias
+        alias_dict: Alias dictionary
+
+    Returns:
+        Validated/adjusted chat mode string
+    """
     ok, info, lib = _probe_mlx_runtime()
     if not ok:
         print("❌ MLX runtime check failed:", info)
@@ -230,17 +322,47 @@ def _preflight_and_maybe_adjust_chat(chat_mode: str, model_name: str, alias_dict
 
 # ===== Rendering / messages =====
 def _apply_reasoning_to_system(system_prompt: str, reasoning_level: str | None) -> str:
+    """
+    Add reasoning level hint to system prompt if specified.
+
+    Args:
+        system_prompt: Base system prompt
+        reasoning_level: Reasoning verbosity level ('low', 'medium', 'high'), or None
+
+    Returns:
+        Modified system prompt with reasoning hint prepended
+    """
     return (f"Reasoning: {reasoning_level}\n{system_prompt}".strip()
             if reasoning_level else system_prompt)
 
-def _render_plain(system_prompt: str, history: list[tuple[str,str]]) -> str:
+def _render_plain(system_prompt: str, history: list[tuple[str, str]]) -> str:
+    """
+    Render conversation in plain text format.
+
+    Args:
+        system_prompt: System prompt text
+        history: List of (role, content) tuples
+
+    Returns:
+        Plain text formatted prompt
+    """
     last_user = ""
     for role, content in reversed(history):
         if role == "user":
             last_user = content; break
     return f"{system_prompt}\n\nUser: {last_user}\nAssistant:"
 
-def _render_hf_template(tokenizer, messages: list[dict]) -> str | None:
+def _render_hf_template(tokenizer: any, messages: list[dict]) -> str | None:
+    """
+    Render messages using HuggingFace chat_template.
+
+    Args:
+        tokenizer: Tokenizer with apply_chat_template method
+        messages: List of message dicts with 'role' and 'content' keys
+
+    Returns:
+        Rendered prompt string, or None if template not available
+    """
     try:
         if hasattr(tokenizer, "apply_chat_template"):
             return tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
@@ -248,7 +370,17 @@ def _render_hf_template(tokenizer, messages: list[dict]) -> str | None:
         pass
     return None
 
-def _compose_messages(system_prompt: str, history: list[tuple[str,str]]) -> list[dict]:
+def _compose_messages(system_prompt: str, history: list[tuple[str, str]]) -> list[dict]:
+    """
+    Convert system prompt and history into standard message format.
+
+    Args:
+        system_prompt: System prompt text
+        history: List of (role, content) tuples
+
+    Returns:
+        List of message dicts with 'role' and 'content' keys
+    """
     msgs = []
     if system_prompt:
         msgs.append({"role":"system","content":system_prompt})
@@ -257,6 +389,15 @@ def _compose_messages(system_prompt: str, history: list[tuple[str,str]]) -> list
     return msgs
 
 def render_harmony_simple(messages: list[dict]) -> str:
+    """
+    Simple Harmony format renderer (fallback implementation).
+
+    Args:
+        messages: List of message dicts with 'role' and 'content' keys
+
+    Returns:
+        Harmony-formatted prompt string
+    """
     parts=[]
     for m in messages:
         role=m.get("role","user")
@@ -265,7 +406,19 @@ def render_harmony_simple(messages: list[dict]) -> str:
     parts.append("<|start|>assistant")
     return "\n".join(parts)
 
-def _render_prompt(chat_mode: str, tokenizer, system_prompt: str, history: list[tuple[str,str]]):
+def _render_prompt(chat_mode: str, tokenizer: any, system_prompt: str, history: list[tuple[str, str]]) -> str:
+    """
+    Render conversation prompt using the specified chat mode.
+
+    Args:
+        chat_mode: Chat rendering mode ('harmony', 'hf', 'plain', 'auto')
+        tokenizer: Model tokenizer
+        system_prompt: System prompt text
+        history: Conversation history as (role, content) tuples
+
+    Returns:
+        Rendered prompt string ready for model input
+    """
     messages = _compose_messages(system_prompt, history)
     if chat_mode == "plain":
         return _render_plain(system_prompt, history)
@@ -292,13 +445,32 @@ def _render_prompt(chat_mode: str, tokenizer, system_prompt: str, history: list[
 
 # ===== Token / memory helpers =====
 def _human_bytes(n: int) -> str:
+    """
+    Convert byte count to human-readable format.
+
+    Args:
+        n: Number of bytes
+
+    Returns:
+        Formatted string (e.g., '1.5 GB', '512.00 MB')
+    """
     units=["B","KB","MB","GB","TB"]; s=float(n)
     for u in units:
         if s<1024.0: return f"{s:.2f} {u}"
         s/=1024.0
     return f"{s:.2f} PB"
 
-def _count_tokens(tokenizer, text: str) -> int:
+def _count_tokens(tokenizer: any, text: str) -> int:
+    """
+    Count tokens in text using the provided tokenizer.
+
+    Args:
+        tokenizer: Model tokenizer
+        text: Text to tokenize
+
+    Returns:
+        Approximate token count (fallback: len(text)/4)
+    """
     try:
         if hasattr(tokenizer,"encode"):
             ids = tokenizer.encode(text)
@@ -320,13 +492,38 @@ def _count_tokens(tokenizer, text: str) -> int:
     except Exception: pass
     return max(1,int(len(text)/4))
 
-def _estimate_kv_bytes(layers:int, hidden_size:int, ctx_tokens:int, dtype_bytes:int=2, batch:int=1)->int:
+def _estimate_kv_bytes(layers: int, hidden_size: int, ctx_tokens: int, dtype_bytes: int = 2, batch: int = 1) -> int:
+    """
+    Estimate KV cache memory usage.
+
+    Args:
+        layers: Number of transformer layers
+        hidden_size: Hidden dimension size
+        ctx_tokens: Context length in tokens
+        dtype_bytes: Bytes per value (1=int8, 2=float16, 4=float32)
+        batch: Batch size
+
+    Returns:
+        Estimated memory usage in bytes
+    """
     if layers<=0 or hidden_size<=0 or ctx_tokens<=0: return 0
     per_tok_per_layer = 2*hidden_size*dtype_bytes
     return int(layers*ctx_tokens*per_tok_per_layer*batch)
 
 # ===== Streaming helper (Harmony final only) =====
-def _stream_final_from_harmony(token_iter):
+def _stream_final_from_harmony(token_iter: any) -> any:
+    """
+    Extract and stream only the final channel content from Harmony output.
+
+    Filters Harmony streaming output to extract only text between
+    <|channel|>final<|message|> and <|end|> markers.
+
+    Args:
+        token_iter: Iterator yielding token strings
+
+    Yields:
+        Cleaned text chunks from the final channel
+    """
     import re
     buf=""; in_final=False
     marker="<|channel|>final<|message|>"; end_markers=("<|end|>","<|start|>")

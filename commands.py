@@ -5,21 +5,26 @@
 
 import os, sys, json, time, subprocess
 from datetime import datetime
-from pathlib import Path
 
 from mlx_lm import load, generate, stream_generate
 from huggingface_hub import snapshot_download
 
 from core import (
     HF_CACHE_PATH, alias_file_path, load_alias_dict,
-    resolve_model_name, repo_to_cache_name, resolve_to_cache_key,
+    resolve_to_cache_key,
     load_config_for_model, _probe_mlx_runtime, _detect_harmony_renderer,
     _apply_reasoning_to_system, _render_prompt,
     _human_bytes, _count_tokens, _estimate_kv_bytes, _stream_final_from_harmony,
 )
 
 # ----- list -----
-def list_models(show_all: bool = False):
+def list_models(show_all: bool = False) -> None:
+    """
+    Display list of installed MLX models with aliases, sizes, and modification times.
+
+    Args:
+        show_all: If True, show all models (currently unused, reserved for future filtering)
+    """
     model_dir = HF_CACHE_PATH
     alias_dict = load_alias_dict()
     if os.path.exists(model_dir):
@@ -80,7 +85,14 @@ def list_models(show_all: bool = False):
         print("❗ Model directory not found")
 
 # ----- show -----
-def show_info(model_name, full=False):
+def show_info(model_name: str, full: bool = False) -> None:
+    """
+    Display detailed information about a specific model.
+
+    Args:
+        model_name: Model name, alias, or cache key
+        full: If True, display full config.json instead of summary
+    """
     if "/" in model_name and not model_name.startswith("models--"):
         org, repo = model_name.split("/", 1)
         model_name = f"models--{org}--{repo}"
@@ -124,16 +136,33 @@ def show_info(model_name, full=False):
         print("❓ Model not found")
 
 # ----- pull -----
-def pull_model(model_name):
+def pull_model(model_name: str) -> None:
+    """
+    Download a model from HuggingFace Hub to local cache.
+
+    Args:
+        model_name: Repository ID (e.g., 'google/gemma-3-27b-it')
+    """
     print(f"🔽 Downloading model '{model_name}' to local cache...")
     try:
         local_dir = snapshot_download(repo_id=model_name)
         print(f"✅ Model downloaded to: {local_dir}")
-    except Exception as e:
+    except (ConnectionError, TimeoutError, ValueError) as e:
         print(f"❌ Failed to download model: {e}")
+        if os.getenv("MLXLM_DEBUG") == "1":
+            import traceback
+            traceback.print_exc()
 
 # ----- remove -----
-def remove_models(targets, assume_yes: bool = False, dry_run: bool = False):
+def remove_models(targets: list[str], assume_yes: bool = False, dry_run: bool = False) -> None:
+    """
+    Remove one or more models from local cache.
+
+    Args:
+        targets: List of model identifiers (aliases, repo IDs, or cache keys)
+        assume_yes: Skip confirmation prompt if True
+        dry_run: Show removal plan without actually deleting if True
+    """
     hub_root = HF_CACHE_PATH
     alias_dict = load_alias_dict()
     cache_keys=[]
@@ -179,7 +208,12 @@ def remove_models(targets, assume_yes: bool = False, dry_run: bool = False):
     print("\n🎯 Done.")
 
 # ----- doctor -----
-def cmd_doctor():
+def cmd_doctor() -> None:
+    """
+    Run environment diagnostics to check MLX, mlx-lm, Harmony, and cache availability.
+
+    Displays checkmarks for working components and suggestions for fixing issues.
+    """
     print("🩺 mlxlm doctor\n")
     import platform, importlib.util, importlib.metadata as _ilmd
     def mark(ok: bool) -> str: return "✅" if ok else "  "
@@ -249,7 +283,7 @@ def cmd_doctor():
 
 # ----- run (interactive) -----
 def run_model(
-    model_name,
+    model_name: str,
     chat_mode: str = "auto",
     system_prompt: str = "You are a helpful assistant. Answer concisely and helpfully.",
     reasoning: str | None = None,
@@ -258,7 +292,21 @@ def run_model(
     stop: list[str] | None = None,
     time_limit: int = 0,
     history_mode: str = "on",
-):
+) -> None:
+    """
+    Run a model in interactive chat mode.
+
+    Args:
+        model_name: Model name, alias, or cache key
+        chat_mode: Chat rendering mode ('auto', 'harmony', 'hf', 'plain')
+        system_prompt: System prompt text
+        reasoning: Reasoning verbosity hint ('low', 'medium', 'high')
+        max_tokens: Maximum tokens to generate per turn
+        stream_mode: Streaming output mode ('all', 'final', 'off')
+        stop: List of stop sequences
+        time_limit: Hard time limit per turn in seconds (0=off)
+        history_mode: Conversation history mode ('on'=full context, 'off'=Q&A only)
+    """
     print(f"🚀 Loading model {model_name}...")
     try:
         model, tokenizer = load(model_name)
@@ -440,7 +488,7 @@ def run_model(
 
 # ----- alias (interactive + simple subcommands) -----
 
-def _list_cached_models_all():
+def _list_cached_models_all() -> list[str]:
     """Return all cached HF models that either have a snapshot OR root-level artifacts (config/safetensors/bin).
     Accepts repos like models--<org>--<repo> even when cloned without snapshots.
     """
@@ -473,7 +521,7 @@ def _list_cached_models_all():
     return sorted(models)
 
 # --- Sync alias helper ---
-def _sync_alias_from_cache():
+def _sync_alias_from_cache() -> None:
     """Ensure alias file contains keys for all cached models. New entries get an empty alias string."""
     try:
         models = _list_cached_models_all()
@@ -490,7 +538,7 @@ def _sync_alias_from_cache():
     except Exception as e:
         print(f"⚠️ Failed to sync aliases from cache: {e}")
 
-def alias_interactive():
+def alias_interactive() -> None:
     """Interactive alias management with add/edit/remove support."""
     _sync_alias_from_cache()
 
