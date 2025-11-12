@@ -1,3 +1,8 @@
+# Copyright (c) 2025 MLX-LM Contributors
+# Licensed under the MIT License. See LICENSE file in the project root for details.
+
+"""Command implementations for mlxlm CLI: list, show, pull, remove, run, alias, doctor."""
+
 import os, sys, json, time, subprocess
 from datetime import datetime
 from pathlib import Path
@@ -6,7 +11,7 @@ from mlx_lm import load, generate, stream_generate
 from huggingface_hub import snapshot_download
 
 from core import (
-    alias_file_path, load_alias_dict,
+    HF_CACHE_PATH, alias_file_path, load_alias_dict,
     resolve_model_name, repo_to_cache_name, resolve_to_cache_key,
     load_config_for_model, _probe_mlx_runtime, _detect_harmony_renderer,
     _apply_reasoning_to_system, _render_prompt,
@@ -15,7 +20,7 @@ from core import (
 
 # ----- list -----
 def list_models(show_all: bool = False):
-    model_dir = os.path.expanduser("~/.cache/huggingface/hub")
+    model_dir = HF_CACHE_PATH
     alias_dict = load_alias_dict()
     if os.path.exists(model_dir):
         models = []
@@ -84,7 +89,7 @@ def show_info(model_name, full=False):
     user_input = model_name.lower()
     if user_input in alias_map_lower:
         model_name = alias_map_lower[user_input]
-    model_path = os.path.expanduser(f"~/.cache/huggingface/hub/{model_name}")
+    model_path = os.path.join(HF_CACHE_PATH, model_name)
     if os.path.exists(model_path):
         try: size_str = subprocess.check_output(['du','-sh',model_path]).decode().split()[0]
         except Exception: size_str="N/A"
@@ -129,7 +134,7 @@ def pull_model(model_name):
 
 # ----- remove -----
 def remove_models(targets, assume_yes: bool = False, dry_run: bool = False):
-    hub_root = os.path.expanduser("~/.cache/huggingface/hub")
+    hub_root = HF_CACHE_PATH
     alias_dict = load_alias_dict()
     cache_keys=[]
     for t in targets:
@@ -216,7 +221,7 @@ def cmd_doctor():
             print(f"{mark(False)} harmony: MISSING")
     ok_lib, info_lib, lib_path = _probe_mlx_runtime()
     print(f"{mark(ok_lib)} libmlx : {'OK' if ok_lib else 'NG'} → {(lib_path or info_lib)}")
-    hub = os.path.expanduser('~/.cache/huggingface/hub')
+    hub = HF_CACHE_PATH
     hub_ok = os.path.isdir(hub)
     print(f"{mark(hub_ok)} HF hub : {hub} → {'exists' if hub_ok else 'missing'}")
     if not renderer:
@@ -439,7 +444,7 @@ def _list_cached_models_all():
     """Return all cached HF models that either have a snapshot OR root-level artifacts (config/safetensors/bin).
     Accepts repos like models--<org>--<repo> even when cloned without snapshots.
     """
-    model_dir = os.path.expanduser("~/.cache/huggingface/hub")
+    model_dir = HF_CACHE_PATH
     models = []
     if os.path.isdir(model_dir):
         for m in os.listdir(model_dir):
