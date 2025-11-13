@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.2] - 2025-11-13
+
+### Fixed
+- CLI help option handling: `-h` and `--help` now properly display help message
+  - Bug: SystemExit exception was incorrectly caught for all cases, including help display
+  - Fix: Now distinguishes between help output (exit code 0) and actual errors
+  - Behavior: `mlxlm -h`, `mlxlm --help`, and `mlxlm help` all work correctly
+
+## [0.2.1] - 2025-11-13
+
+### Added
+- Type hint completion: 100% coverage across all modules (mlxlm.py, cli_flags.py, core.py, commands.py)
+- 28 new docstrings for functions in core.py and commands.py (achieving 100% documentation)
+- Specific exception handling with proper exception types instead of generic `except Exception`
+
+### Changed
+- Improved exception handling in: load_alias_dict(), load_config_for_model(), _get_model_type(), pull_model(), and file operations
+- Enhanced error messages and debug tracebacks for better troubleshooting
+
+### Removed
+- 3 unused imports: pathlib.Path, core.resolve_model_name, core.repo_to_cache_name
+
 ## [0.2.0] - 2025-01-12
 
 ### Added
