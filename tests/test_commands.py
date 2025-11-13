@@ -69,7 +69,7 @@ class TestListModels:
     @patch('commands.list.os.listdir')
     @patch('commands.list.os.path.isdir')
     @patch('commands.list.os.scandir')
-    @patch('core.load_alias_dict')
+    @patch('commands.list.load_alias_dict')
     @patch('commands.list.subprocess.check_output')
     @patch('commands.list.os.walk')
     @patch('commands.list.os.path.getmtime')
@@ -122,10 +122,10 @@ class TestListModels:
 class TestShowInfo:
     """Tests for model info display"""
 
-    @patch('core.load_alias_dict')
+    @patch('commands.show.load_alias_dict')
     @patch('commands.show.os.path.exists')
     @patch('commands.show.subprocess.check_output')
-    @patch('core.load_config_for_model')
+    @patch('commands.show.load_config_for_model')
     def test_show_info_success(
         self, mock_load_config, mock_subprocess, mock_exists, mock_load_alias, capsys
     ):
@@ -147,7 +147,7 @@ class TestShowInfo:
         assert "gemma3" in captured.out
         assert "4096" in captured.out
 
-    @patch('core.load_alias_dict')
+    @patch('commands.show.load_alias_dict')
     @patch('commands.show.os.path.exists')
     def test_show_info_not_found(self, mock_exists, mock_load_alias, capsys):
         """Test showing info for non-existent model"""
@@ -166,9 +166,9 @@ class TestAliasManagement:
     """Tests for alias add/edit/remove commands"""
 
     @patch('commands.alias._sync_alias_from_cache')
-    @patch('core.load_alias_dict')
+    @patch('commands.alias.load_alias_dict')
     @patch('builtins.open', new_callable=mock_open)
-    @patch('core.alias_file_path', '/tmp/.mlxlm_aliases.json')
+    @patch('commands.alias.alias_file_path', '/tmp/.mlxlm_aliases.json')
     def test_alias_add(self, mock_file, mock_load_alias, mock_sync, capsys):
         """Test adding a new alias"""
         mock_load_alias.return_value = {}
@@ -181,9 +181,9 @@ class TestAliasManagement:
         assert "Added alias" in captured.out or "gemma3" in captured.out
 
     @patch('commands.alias._sync_alias_from_cache')
-    @patch('core.load_alias_dict')
+    @patch('commands.alias.load_alias_dict')
     @patch('builtins.open', new_callable=mock_open)
-    @patch('core.alias_file_path', '/tmp/.mlxlm_aliases.json')
+    @patch('commands.alias.alias_file_path', '/tmp/.mlxlm_aliases.json')
     def test_alias_remove(self, mock_file, mock_load_alias, mock_sync, capsys):
         """Test removing an alias"""
         mock_load_alias.return_value = {
@@ -196,7 +196,7 @@ class TestAliasManagement:
         assert "Removed" in captured.out or "gemma3" in captured.out
 
     @patch('commands.alias._sync_alias_from_cache')
-    @patch('core.load_alias_dict')
+    @patch('commands.alias.load_alias_dict')
     def test_alias_list(self, mock_load_alias, mock_sync, capsys):
         """Test listing all aliases"""
         mock_load_alias.return_value = {
@@ -211,9 +211,9 @@ class TestAliasManagement:
         assert "llama3" in captured.out
 
     @patch('commands.alias._sync_alias_from_cache')
-    @patch('core.load_alias_dict')
+    @patch('commands.alias.load_alias_dict')
     @patch('builtins.open', new_callable=mock_open)
-    @patch('core.alias_file_path', '/tmp/.mlxlm_aliases.json')
+    @patch('commands.alias.alias_file_path', '/tmp/.mlxlm_aliases.json')
     def test_alias_edit(self, mock_file, mock_load_alias, mock_sync, capsys):
         """Test editing an existing alias"""
         mock_load_alias.return_value = {
@@ -303,9 +303,9 @@ class TestHelperFunctions:
         assert "not-a-model" not in result
 
     @patch('commands.alias._list_cached_models_all')
-    @patch('core.load_alias_dict')
+    @patch('commands.alias.load_alias_dict')
     @patch('builtins.open', new_callable=mock_open)
-    @patch('core.alias_file_path', '/tmp/.mlxlm_aliases.json')
+    @patch('commands.alias.alias_file_path', '/tmp/.mlxlm_aliases.json')
     def test_sync_alias_from_cache_new_models(
         self, mock_file, mock_load_alias, mock_list_models, capsys
     ):
