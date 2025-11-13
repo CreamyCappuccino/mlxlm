@@ -6,7 +6,7 @@
 
 from __future__ import annotations
 
-__version__ = "0.2.0"
+__version__ = "0.2.2"
 
 import sys
 from cli_flags import build_parser
@@ -17,10 +17,12 @@ def main() -> None:
     parser = build_parser()
     try:
         args = parser.parse_args()
-    except SystemExit:
-        print("❗ Invalid command or usage.")
-        print("💡 Use `mlxlm --help` to view the correct usage.\n")
-        sys.exit(1)
+    except SystemExit as e:
+        # Allow help output (exit code 0) to pass through
+        if e.code != 0:
+            print("❗ Invalid command or usage.")
+            print("💡 Use `mlxlm --help` to view the correct usage.\n")
+        sys.exit(e.code)
 
     if args.command == "help" or not args.command:
         parser.print_help(); sys.exit(0)
