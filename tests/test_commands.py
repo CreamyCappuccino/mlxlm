@@ -64,15 +64,15 @@ def mock_alias_data():
 class TestListModels:
     """Tests for model listing functionality"""
 
-    @patch('commands.os.path.expanduser')
-    @patch('commands.os.path.exists')
-    @patch('commands.os.listdir')
-    @patch('commands.os.path.isdir')
-    @patch('commands.os.scandir')
-    @patch('commands.load_alias_dict')
-    @patch('commands.subprocess.check_output')
-    @patch('commands.os.walk')
-    @patch('commands.os.path.getmtime')
+    @patch('commands.list.os.path.expanduser')
+    @patch('commands.list.os.path.exists')
+    @patch('commands.list.os.listdir')
+    @patch('commands.list.os.path.isdir')
+    @patch('commands.list.os.scandir')
+    @patch('core.load_alias_dict')
+    @patch('commands.list.subprocess.check_output')
+    @patch('commands.list.os.walk')
+    @patch('commands.list.os.path.getmtime')
     def test_list_models_with_aliases(
         self, mock_getmtime, mock_walk, mock_subprocess, mock_load_alias,
         mock_scandir, mock_isdir, mock_listdir, mock_exists, mock_expanduser, capsys
@@ -106,7 +106,7 @@ class TestListModels:
         assert "models--google--gemma-3-27b-it" in captured.out
         assert "gemma3" in captured.out
 
-    @patch('commands.os.path.exists')
+    @patch('commands.list.os.path.exists')
     def test_list_models_no_directory(self, mock_exists, capsys):
         """Test listing when model directory doesn't exist"""
         mock_exists.return_value = False
@@ -122,10 +122,10 @@ class TestListModels:
 class TestShowInfo:
     """Tests for model info display"""
 
-    @patch('commands.load_alias_dict')
-    @patch('commands.os.path.exists')
-    @patch('commands.subprocess.check_output')
-    @patch('commands.load_config_for_model')
+    @patch('core.load_alias_dict')
+    @patch('commands.show.os.path.exists')
+    @patch('commands.show.subprocess.check_output')
+    @patch('core.load_config_for_model')
     def test_show_info_success(
         self, mock_load_config, mock_subprocess, mock_exists, mock_load_alias, capsys
     ):
@@ -147,8 +147,8 @@ class TestShowInfo:
         assert "gemma3" in captured.out
         assert "4096" in captured.out
 
-    @patch('commands.load_alias_dict')
-    @patch('commands.os.path.exists')
+    @patch('core.load_alias_dict')
+    @patch('commands.show.os.path.exists')
     def test_show_info_not_found(self, mock_exists, mock_load_alias, capsys):
         """Test showing info for non-existent model"""
         mock_load_alias.return_value = {}
@@ -165,10 +165,10 @@ class TestShowInfo:
 class TestAliasManagement:
     """Tests for alias add/edit/remove commands"""
 
-    @patch('commands._sync_alias_from_cache')
-    @patch('commands.load_alias_dict')
+    @patch('commands.alias._sync_alias_from_cache')
+    @patch('core.load_alias_dict')
     @patch('builtins.open', new_callable=mock_open)
-    @patch('commands.alias_file_path', '/tmp/.mlxlm_aliases.json')
+    @patch('core.alias_file_path', '/tmp/.mlxlm_aliases.json')
     def test_alias_add(self, mock_file, mock_load_alias, mock_sync, capsys):
         """Test adding a new alias"""
         mock_load_alias.return_value = {}
@@ -180,10 +180,10 @@ class TestAliasManagement:
         captured = capsys.readouterr()
         assert "Added alias" in captured.out or "gemma3" in captured.out
 
-    @patch('commands._sync_alias_from_cache')
-    @patch('commands.load_alias_dict')
+    @patch('commands.alias._sync_alias_from_cache')
+    @patch('core.load_alias_dict')
     @patch('builtins.open', new_callable=mock_open)
-    @patch('commands.alias_file_path', '/tmp/.mlxlm_aliases.json')
+    @patch('core.alias_file_path', '/tmp/.mlxlm_aliases.json')
     def test_alias_remove(self, mock_file, mock_load_alias, mock_sync, capsys):
         """Test removing an alias"""
         mock_load_alias.return_value = {
@@ -195,8 +195,8 @@ class TestAliasManagement:
         captured = capsys.readouterr()
         assert "Removed" in captured.out or "gemma3" in captured.out
 
-    @patch('commands._sync_alias_from_cache')
-    @patch('commands.load_alias_dict')
+    @patch('commands.alias._sync_alias_from_cache')
+    @patch('core.load_alias_dict')
     def test_alias_list(self, mock_load_alias, mock_sync, capsys):
         """Test listing all aliases"""
         mock_load_alias.return_value = {
@@ -210,10 +210,10 @@ class TestAliasManagement:
         assert "gemma3" in captured.out
         assert "llama3" in captured.out
 
-    @patch('commands._sync_alias_from_cache')
-    @patch('commands.load_alias_dict')
+    @patch('commands.alias._sync_alias_from_cache')
+    @patch('core.load_alias_dict')
     @patch('builtins.open', new_callable=mock_open)
-    @patch('commands.alias_file_path', '/tmp/.mlxlm_aliases.json')
+    @patch('core.alias_file_path', '/tmp/.mlxlm_aliases.json')
     def test_alias_edit(self, mock_file, mock_load_alias, mock_sync, capsys):
         """Test editing an existing alias"""
         mock_load_alias.return_value = {
@@ -233,9 +233,9 @@ class TestDoctor:
 
     @patch('importlib.metadata.version')
     @patch('importlib.util.find_spec')
-    @patch('commands._probe_mlx_runtime')
-    @patch('commands._detect_harmony_renderer')
-    @patch('commands.os.path.isdir')
+    @patch('core._probe_mlx_runtime')
+    @patch('core._detect_harmony_renderer')
+    @patch('commands.doctor.os.path.isdir')
     def test_doctor_all_ok(
         self, mock_isdir, mock_harmony, mock_probe, mock_find_spec, mock_version, capsys
     ):
@@ -254,9 +254,9 @@ class TestDoctor:
 
     @patch('importlib.metadata.version')
     @patch('importlib.util.find_spec')
-    @patch('commands._probe_mlx_runtime')
-    @patch('commands._detect_harmony_renderer')
-    @patch('commands.os.path.isdir')
+    @patch('core._probe_mlx_runtime')
+    @patch('core._detect_harmony_renderer')
+    @patch('commands.doctor.os.path.isdir')
     def test_doctor_missing_dependencies(
         self, mock_isdir, mock_harmony, mock_probe, mock_find_spec, mock_version, capsys
     ):
@@ -278,9 +278,9 @@ class TestDoctor:
 class TestHelperFunctions:
     """Tests for internal helper functions"""
 
-    @patch('commands.os.path.isdir')
-    @patch('commands.os.listdir')
-    @patch('commands.os.scandir')
+    @patch('commands.alias.os.path.isdir')
+    @patch('commands.alias.os.listdir')
+    @patch('commands.alias.os.scandir')
     def test_list_cached_models_all(self, mock_scandir, mock_listdir, mock_isdir):
         """Test listing all cached models"""
         mock_isdir.side_effect = lambda path: "hub" in path or "models--" in path
@@ -295,17 +295,17 @@ class TestHelperFunctions:
         mock_entry.is_dir.return_value = True
         mock_scandir.return_value = [mock_entry]
 
-        with patch('commands.os.path.expanduser', return_value="/home/user/.cache/huggingface/hub"):
+        with patch('commands.alias.os.path.expanduser', return_value="/home/user/.cache/huggingface/hub"):
             result = _list_cached_models_all()
 
         assert "models--google--gemma-3-27b-it" in result
         assert "models--meta--llama3-8b" in result
         assert "not-a-model" not in result
 
-    @patch('commands._list_cached_models_all')
-    @patch('commands.load_alias_dict')
+    @patch('commands.alias._list_cached_models_all')
+    @patch('core.load_alias_dict')
     @patch('builtins.open', new_callable=mock_open)
-    @patch('commands.alias_file_path', '/tmp/.mlxlm_aliases.json')
+    @patch('core.alias_file_path', '/tmp/.mlxlm_aliases.json')
     def test_sync_alias_from_cache_new_models(
         self, mock_file, mock_load_alias, mock_list_models, capsys
     ):

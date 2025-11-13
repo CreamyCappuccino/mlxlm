@@ -9,7 +9,7 @@ from .pull import pull_model
 from .remove import remove_models
 from .doctor import cmd_doctor
 from .run import run_model
-from .alias import alias_main, alias_interactive
+from .alias import alias_main, alias_interactive, _list_cached_models_all, _sync_alias_from_cache
 
 __all__ = [
     'list_models',
@@ -20,4 +20,6 @@ __all__ = [
     'run_model',
     'alias_main',
     'alias_interactive',
+    '_list_cached_models_all',
+    '_sync_alias_from_cache',
 ]
