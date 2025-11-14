@@ -16,7 +16,7 @@ try:
     from prompt_toolkit.history import InMemoryHistory, FileHistory
     from prompt_toolkit.key_binding import KeyBindings
     from prompt_toolkit.formatted_text import ANSI
-    from prompt_toolkit.completion import WordCompleter
+    from prompt_toolkit.completion import Completer, Completion
     from pathlib import Path
     PROMPT_TOOLKIT_AVAILABLE = True
 except ImportError:
@@ -122,8 +122,24 @@ def run_model(
         def _(event):
             event.current_buffer.history_forward(count=1)
 
+        # Custom completer that only shows commands when input starts with /
+        class SlashCommandCompleter(Completer):
+            """Completer that only suggests /exit and /bye when user types /"""
+            def __init__(self, commands):
+                self.commands = commands
+
+            def get_completions(self, document, complete_event):
+                text = document.text_before_cursor
+                # Only show completions if text starts with /
+                if text.startswith('/'):
+                    word = text[1:].lower()  # Remove / and get lowercase for matching
+                    for cmd in self.commands:
+                        cmd_name = cmd[1:].lower()  # Remove / from command name
+                        if cmd_name.startswith(word):
+                            yield Completion(cmd, start_position=-len(text))
+
         # Create command completer for /exit, /bye
-        completer = WordCompleter(['/exit', '/bye'], ignore_case=True)
+        completer = SlashCommandCompleter(['/exit', '/bye'])
 
         session = PromptSession(
             history=FileHistory(str(history_file)),  # Persistent history
