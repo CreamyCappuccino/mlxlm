@@ -5,6 +5,51 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.5] - 2025-11-14
+
+### Added
+- **prompt-toolkit integration** for enhanced input experience in `mlxlm run`
+  - Persistent input history across sessions (saved to `mlxlm_data/input_history`)
+  - Multiline input support with Option+Enter (Mac) / Alt+Enter (Linux), or Ctrl+J
+  - Command completion for `/exit` and `/bye` (shows only when typing `/` and pressing Tab)
+  - Colorful ANSI terminal output (user prompts, model responses, errors, warnings)
+  - Keyboard shortcuts for history navigation (Option/Alt + Up/Down)
+  - Graceful fallback to basic input() when prompt-toolkit is unavailable
+  - Ctrl+C cancellation and Ctrl+D exit support
+
+### Changed
+- `requirements.txt`: Added `prompt_toolkit>=3.0.43` dependency
+- `.gitignore`: Added `mlxlm_data/` to exclude user data from git tracking
+
+### Fixed
+- Auto-completion popup appearing for non-slash commands
+  - Implemented custom `SlashCommandCompleter` to only show completions when input starts with `/`
+  - Disabled automatic completion popup (now only shows on Tab press)
+- Invalid keybinding syntax in prompt-toolkit
+  - Fixed: Changed from `s-enter` to `escape, enter` for Option/Alt+Enter
+  - Fixed: Changed from `c-up/c-down` to `escape, up/down` for Option/Alt+Arrow keys
+
+## [0.2.3] - 2025-11-14
+
+### Changed
+- **Major refactoring**: Split 727-line `commands.py` into modular structure
+  - Created `commands/` directory with 8 modules:
+    - `list.py`: Model listing functionality
+    - `show.py`: Model information display
+    - `pull.py`: Model downloading from HuggingFace
+    - `remove.py`: Model removal operations
+    - `doctor.py`: Environment diagnostics
+    - `run.py`: Interactive model execution
+    - `alias.py`: Alias management commands
+    - `__init__.py`: Package exports for backward compatibility
+  - Total: 821 lines (+94 from headers/docstrings)
+  - All 10 functions preserved with identical functionality
+
+### Fixed
+- Test suite compatibility with modular structure
+  - Updated `test_commands.py` mock paths from `core.XXX` to `commands.<module>.XXX`
+  - All 12 tests passing (100% success rate)
+
 ## [0.2.2] - 2025-11-13
 
 ### Fixed
