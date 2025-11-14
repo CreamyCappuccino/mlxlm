@@ -10,6 +10,18 @@ import time
 
 from mlx_lm import load, generate, stream_generate
 
+# prompt-toolkit imports
+try:
+    from prompt_toolkit import PromptSession
+    from prompt_toolkit.history import InMemoryHistory, FileHistory
+    from prompt_toolkit.key_binding import KeyBindings
+    from prompt_toolkit.formatted_text import ANSI
+    from prompt_toolkit.completion import WordCompleter
+    from pathlib import Path
+    PROMPT_TOOLKIT_AVAILABLE = True
+except ImportError:
+    PROMPT_TOOLKIT_AVAILABLE = False
+
 from core import (
     load_alias_dict,
     resolve_to_cache_key,
@@ -21,6 +33,20 @@ from core import (
     _estimate_kv_bytes,
     _stream_final_from_harmony,
 )
+
+# ANSI color codes for terminal output
+COLORS = {
+    'user_prompt': '\033[1;37m',      # Bold white (浅めの灰色に見える)
+    'model_output': '\033[97m',       # Bright white
+    'error': '\033[91m',              # Bright red
+    'success': '\033[92m',            # Bright green
+    'warning': '\033[93m',            # Bright yellow
+    'reset': '\033[0m',               # Reset
+}
+
+def _colored(text: str, color_key: str) -> str:
+    """Apply ANSI color to text."""
+    return f"{COLORS.get(color_key, '')}{text}{COLORS['reset']}"
 
 
 def run_model(
@@ -63,14 +89,63 @@ def run_model(
         if not remember_assistant:
             print("[DEBUG] Assistant responses will NOT be stored in history (Q&A mode).")
 
+    # Initialize prompt session (with fallback to plain input)
+    if PROMPT_TOOLKIT_AVAILABLE:
+        # Set up history file path (mlxlm_data/input_history)
+        project_root = Path(__file__).parent.parent
+        data_dir = project_root / "mlxlm_data"
+        data_dir.mkdir(exist_ok=True)
+        history_file = data_dir / "input_history"
+
+        # Create custom key bindings
+        kb = KeyBindings()
+
+        # Shift+Enter: Insert newline (for multiline input)
+        @kb.add('s-enter')
+        def _(event):
+            event.current_buffer.insert_text('\n')
+
+        # Command+Up: Previous history (works in multiline)
+        @kb.add('c-up')
+        def _(event):
+            event.current_buffer.history_backward(count=1)
+
+        # Command+Down: Next history (works in multiline)
+        @kb.add('c-down')
+        def _(event):
+            event.current_buffer.history_forward(count=1)
+
+        # Create command completer for /exit, /bye
+        completer = WordCompleter(['/exit', '/bye'], ignore_case=True)
+
+        session = PromptSession(
+            history=FileHistory(str(history_file)),  # Persistent history
+            key_bindings=kb,
+            completer=completer,
+            multiline=False,  # Single-line by default, but Shift+Enter adds newlines
+        )
+    else:
+        session = None
+
     while True:
         try:
-            user_input = input("📝 Prompt: ").strip()
+            if session:
+                # Use prompt-toolkit for enhanced input experience with colored prompt
+                prompt_text = ANSI(_colored("📝 Prompt: ", "user_prompt"))
+                user_input = session.prompt(prompt_text).strip()
+            else:
+                # Fallback to plain input if prompt-toolkit not available
+                user_input = input(_colored("📝 Prompt: ", "user_prompt")).strip()
+        except KeyboardInterrupt:
+            # Ctrl+C: Cancel current input, don't exit
+            print(_colored("\n⚠️  Cancelled. Type '/exit' or '/bye' to quit.", "warning"))
+            continue
         except EOFError:
-            print("\n👋 Bye!")
+            # Ctrl+D: Exit
+            print(_colored("\n👋 Bye!", "success"))
             break
         if user_input.lower() in ["/exit","/bye"]:
-            print("👋 Bye!"); break
+            print(_colored("👋 Bye!", "success")); break
         if not user_input: continue
         history.append(("user", user_input))
 
