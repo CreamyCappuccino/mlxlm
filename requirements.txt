@@ -6,7 +6,7 @@ mlx-lm  # High-level language model utilities built on MLX
 huggingface_hub  # Model metadata lookup and snapshot downloads
 
 # CLI / terminal experience
-prompt_toolkit>=3.0.0  # Interactive terminal UI
+prompt_toolkit>=3.0.43  # Interactive terminal UI (multiline, history, completion)
 
 # Experiment utilities
 matplotlib  # Optional: visualization helpers under trm_exp/
