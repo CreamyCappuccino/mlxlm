@@ -6,7 +6,7 @@
 
 from __future__ import annotations
 
-__version__ = "0.2.2"
+__version__ = "0.2.5"
 
 import sys
 from cli_flags import build_parser
