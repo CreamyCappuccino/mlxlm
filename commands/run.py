@@ -100,18 +100,25 @@ def run_model(
         # Create custom key bindings
         kb = KeyBindings()
 
-        # Shift+Enter: Insert newline (for multiline input)
-        @kb.add('s-enter')
+        # Option+Enter (Mac) / Alt+Enter (Linux): Insert newline (for multiline input)
+        # Note: Shift+Enter is not directly supported in prompt-toolkit
+        @kb.add('escape', 'enter')
         def _(event):
             event.current_buffer.insert_text('\n')
 
-        # Command+Up: Previous history (works in multiline)
-        @kb.add('c-up')
+        # Also support Ctrl+J for newline (common in terminals)
+        @kb.add('c-j')
+        def _(event):
+            event.current_buffer.insert_text('\n')
+
+        # Option+Up (Mac) / Alt+Up (Linux): Previous history (works in multiline)
+        # Note: Command key is not directly supported in prompt-toolkit
+        @kb.add('escape', 'up')
         def _(event):
             event.current_buffer.history_backward(count=1)
 
-        # Command+Down: Next history (works in multiline)
-        @kb.add('c-down')
+        # Option+Down (Mac) / Alt+Down (Linux): Next history (works in multiline)
+        @kb.add('escape', 'down')
         def _(event):
             event.current_buffer.history_forward(count=1)
 
