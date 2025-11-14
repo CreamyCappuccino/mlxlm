@@ -129,6 +129,7 @@ def run_model(
             history=FileHistory(str(history_file)),  # Persistent history
             key_bindings=kb,
             completer=completer,
+            complete_while_typing=False,  # Only show completions when Tab is pressed
             multiline=False,  # Single-line by default, but Shift+Enter adds newlines
         )
     else:
