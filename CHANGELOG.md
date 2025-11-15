@@ -5,17 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.2.5] - 2025-11-14
+## [0.2.5] - 2025-11-15
 
 ### Added
 - **prompt-toolkit integration** for enhanced input experience in `mlxlm run`
   - Persistent input history across sessions (saved to `mlxlm_data/input_history`)
   - Multiline input support with Option+Enter (Mac) / Alt+Enter (Linux), or Ctrl+J
   - Command completion for `/exit` and `/bye` (shows only when typing `/` and pressing Tab)
+  - **Inline auto-suggestions** with gray text for slash commands (Claude Code style)
+    - Type `/e` to see `xit` in gray, accept with right arrow or Ctrl+E
+    - Improves discoverability without requiring Tab press
   - Colorful ANSI terminal output (user prompts, model responses, errors, warnings)
-  - Keyboard shortcuts for history navigation (Option/Alt + Up/Down)
+  - Keyboard shortcuts for history navigation (Ctrl+P for previous, Ctrl+N for next)
+  - Additional cursor movement shortcuts (Ctrl+R for line start, Ctrl+O for line end)
+  - **Ctrl+C support during model generation** to interrupt output and return to prompt
   - Graceful fallback to basic input() when prompt-toolkit is unavailable
-  - Ctrl+C cancellation and Ctrl+D exit support
+  - Ctrl+D exit support
 
 ### Changed
 - `requirements.txt`: Added `prompt_toolkit>=3.0.43` dependency
@@ -25,9 +30,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Auto-completion popup appearing for non-slash commands
   - Implemented custom `SlashCommandCompleter` to only show completions when input starts with `/`
   - Disabled automatic completion popup (now only shows on Tab press)
+- Multiple keybinding refinements to avoid system conflicts
+  - Removed Option/Alt + Up/Down (conflicted with macOS system shortcuts)
+  - Changed from invalid `c-,`/`c-.` to valid `c-]`/`c-\\`
+  - Final keybindings: `c-r` (line start) and `c-o` (line end) for better ergonomics
 - Invalid keybinding syntax in prompt-toolkit
   - Fixed: Changed from `s-enter` to `escape, enter` for Option/Alt+Enter
-  - Fixed: Changed from `c-up/c-down` to `escape, up/down` for Option/Alt+Arrow keys
+  - Properly enabled default Emacs history navigation (Ctrl+P/Ctrl+N)
 
 ## [0.2.3] - 2025-11-14
 
