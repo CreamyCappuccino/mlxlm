@@ -111,13 +111,13 @@ def run_model(
         def _(event):
             event.current_buffer.insert_text('\n')
 
-        # Ctrl+] : Move cursor to beginning of line (alternative to Ctrl+A)
-        @kb.add('c-]')
+        # Ctrl+R : Move cursor to beginning of line (alternative to Ctrl+A)
+        @kb.add('c-r')
         def _(event):
             event.current_buffer.cursor_position = 0
 
-        # Ctrl+\ : Move cursor to end of line (alternative to Ctrl+E)
-        @kb.add('c-\\')
+        # Ctrl+O : Move cursor to end of line (alternative to Ctrl+E)
+        @kb.add('c-o')
         def _(event):
             event.current_buffer.cursor_position = len(event.current_buffer.text)
 
