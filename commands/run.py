@@ -128,6 +128,273 @@ def export_conversation(history: list[tuple[str, str]], filename: str, format: s
         return False
 
 
+def show_settings_menu(config: dict) -> dict:
+    """
+    Display interactive settings menu and return updated config.
+
+    Args:
+        config: Current configuration dictionary
+
+    Returns:
+        dict: Updated configuration dictionary
+    """
+    while True:
+        print("""
+⚙️  Settings Menu:
+
+1. 💬 Default Behavior Settings
+2. 🎨 Color Settings
+3. 📚 History Settings
+4. 💾 Export Settings
+5. 🔙 Back
+
+Select (1-5): """, end='')
+
+        try:
+            choice = input().strip()
+        except (KeyboardInterrupt, EOFError):
+            print()
+            break
+
+        if choice == '1':
+            config = edit_defaults(config)
+        elif choice == '2':
+            config = edit_colors(config)
+        elif choice == '3':
+            config = edit_history(config)
+        elif choice == '4':
+            config = edit_export(config)
+        elif choice == '5':
+            break
+        else:
+            print(_colored("⚠️  Invalid choice. Please select 1-5.", "warning"))
+
+    return config
+
+
+def edit_defaults(config: dict) -> dict:
+    """Edit default behavior settings."""
+    while True:
+        defaults = config['defaults']
+        print(f"""
+💬 Default Behavior Settings:
+
+1. Max Tokens: {defaults['max_tokens']}
+2. Stream Mode: {defaults['stream_mode']}
+3. Chat Mode: {defaults['chat_mode']}
+4. History Mode: {defaults['history']}
+5. Time Limit: {defaults['time_limit']} sec
+6. Reasoning Level: {defaults['reasoning'] or 'None'}
+7. 🔙 Back
+
+Select (1-7): """, end='')
+
+        try:
+            choice = input().strip()
+        except (KeyboardInterrupt, EOFError):
+            print()
+            break
+
+        if choice == '1':
+            print("Enter max tokens (512/1024/2048/4096): ", end='')
+            try:
+                value = int(input().strip())
+                if value > 0:
+                    config['defaults']['max_tokens'] = value
+                    print(_colored(f"✅ Max tokens set to {value}", "success"))
+                else:
+                    print(_colored("⚠️  Value must be positive", "warning"))
+            except ValueError:
+                print(_colored("⚠️  Invalid number", "warning"))
+
+        elif choice == '2':
+            print("Stream mode (all/final/off): ", end='')
+            value = input().strip().lower()
+            if value in ['all', 'final', 'off']:
+                config['defaults']['stream_mode'] = value
+                print(_colored(f"✅ Stream mode set to {value}", "success"))
+            else:
+                print(_colored("⚠️  Invalid mode. Use all/final/off", "warning"))
+
+        elif choice == '3':
+            print("Chat mode (auto/harmony/hf/plain): ", end='')
+            value = input().strip().lower()
+            if value in ['auto', 'harmony', 'hf', 'plain']:
+                config['defaults']['chat_mode'] = value
+                print(_colored(f"✅ Chat mode set to {value}", "success"))
+            else:
+                print(_colored("⚠️  Invalid mode. Use auto/harmony/hf/plain", "warning"))
+
+        elif choice == '4':
+            print("History mode (on/off): ", end='')
+            value = input().strip().lower()
+            if value in ['on', 'off']:
+                config['defaults']['history'] = value
+                print(_colored(f"✅ History mode set to {value}", "success"))
+            else:
+                print(_colored("⚠️  Invalid mode. Use on/off", "warning"))
+
+        elif choice == '5':
+            print("Time limit in seconds (0 for unlimited): ", end='')
+            try:
+                value = int(input().strip())
+                if value >= 0:
+                    config['defaults']['time_limit'] = value
+                    print(_colored(f"✅ Time limit set to {value} sec", "success"))
+                else:
+                    print(_colored("⚠️  Value must be non-negative", "warning"))
+            except ValueError:
+                print(_colored("⚠️  Invalid number", "warning"))
+
+        elif choice == '6':
+            print("Reasoning level (low/medium/high/none): ", end='')
+            value = input().strip().lower()
+            if value == 'none':
+                config['defaults']['reasoning'] = None
+                print(_colored("✅ Reasoning level cleared", "success"))
+            elif value in ['low', 'medium', 'high']:
+                config['defaults']['reasoning'] = value
+                print(_colored(f"✅ Reasoning level set to {value}", "success"))
+            else:
+                print(_colored("⚠️  Invalid level. Use low/medium/high/none", "warning"))
+
+        elif choice == '7':
+            break
+        else:
+            print(_colored("⚠️  Invalid choice. Please select 1-7.", "warning"))
+
+    return config
+
+
+def edit_colors(config: dict) -> dict:
+    """Edit color settings."""
+    print("""
+🎨 Color Settings:
+
+Note: Custom color editing coming in future version.
+Current colors are pre-configured and working well.
+
+Press Enter to return...""", end='')
+    try:
+        input()
+    except (KeyboardInterrupt, EOFError):
+        print()
+
+    return config
+
+
+def edit_history(config: dict) -> dict:
+    """Edit history settings."""
+    while True:
+        hist = config['history']
+        print(f"""
+📚 History Settings:
+
+1. Max Entries: {hist['max_entries']}
+2. Max Age (days): {hist['max_age_days'] or 'Unlimited'}
+3. 🔙 Back
+
+Select (1-3): """, end='')
+
+        try:
+            choice = input().strip()
+        except (KeyboardInterrupt, EOFError):
+            print()
+            break
+
+        if choice == '1':
+            print("Max entries (10/25/50/100/200/0 for unlimited): ", end='')
+            try:
+                value = int(input().strip())
+                if value >= 0:
+                    config['history']['max_entries'] = value if value > 0 else 999999
+                    print(_colored(f"✅ Max entries set to {value if value > 0 else 'unlimited'}", "success"))
+                else:
+                    print(_colored("⚠️  Value must be non-negative", "warning"))
+            except ValueError:
+                print(_colored("⚠️  Invalid number", "warning"))
+
+        elif choice == '2':
+            print("Max age in days (0 for unlimited): ", end='')
+            try:
+                value = int(input().strip())
+                if value >= 0:
+                    config['history']['max_age_days'] = None if value == 0 else value
+                    print(_colored(f"✅ Max age set to {value if value > 0 else 'unlimited'} days", "success"))
+                else:
+                    print(_colored("⚠️  Value must be non-negative", "warning"))
+            except ValueError:
+                print(_colored("⚠️  Invalid number", "warning"))
+
+        elif choice == '3':
+            break
+        else:
+            print(_colored("⚠️  Invalid choice. Please select 1-3.", "warning"))
+
+    return config
+
+
+def edit_export(config: dict) -> dict:
+    """Edit export settings."""
+    while True:
+        exp = config['export']
+        print(f"""
+💾 Export Settings:
+
+1. Default Format: {exp['default_format']}
+2. Include Timestamp: {exp['include_timestamp']}
+3. Auto Save on Exit: {exp['auto_save']}
+4. 🔙 Back
+
+Select (1-4): """, end='')
+
+        try:
+            choice = input().strip()
+        except (KeyboardInterrupt, EOFError):
+            print()
+            break
+
+        if choice == '1':
+            print("Default format (md/txt/json): ", end='')
+            value = input().strip().lower()
+            if value in ['md', 'txt', 'json']:
+                config['export']['default_format'] = value
+                print(_colored(f"✅ Default format set to {value}", "success"))
+            else:
+                print(_colored("⚠️  Invalid format. Use md/txt/json", "warning"))
+
+        elif choice == '2':
+            print("Include timestamp in filename? (yes/no): ", end='')
+            value = input().strip().lower()
+            if value in ['yes', 'y']:
+                config['export']['include_timestamp'] = True
+                print(_colored("✅ Timestamp enabled", "success"))
+            elif value in ['no', 'n']:
+                config['export']['include_timestamp'] = False
+                print(_colored("✅ Timestamp disabled", "success"))
+            else:
+                print(_colored("⚠️  Invalid value. Use yes/no", "warning"))
+
+        elif choice == '3':
+            print("Auto save on exit? (yes/no): ", end='')
+            value = input().strip().lower()
+            if value in ['yes', 'y']:
+                config['export']['auto_save'] = True
+                print(_colored("✅ Auto save enabled", "success"))
+            elif value in ['no', 'n']:
+                config['export']['auto_save'] = False
+                print(_colored("✅ Auto save disabled", "success"))
+            else:
+                print(_colored("⚠️  Invalid value. Use yes/no", "warning"))
+
+        elif choice == '4':
+            break
+        else:
+            print(_colored("⚠️  Invalid choice. Please select 1-4.", "warning"))
+
+    return config
+
+
 def run_model(
     model_name: str,
     chat_mode: str = "auto",
@@ -239,7 +506,7 @@ def run_model(
                 return None
 
         # Create command completer and auto-suggest for slash commands
-        commands = ['/exit', '/bye', '/quit', '/help', '/clear', '/status', '/export']
+        commands = ['/exit', '/bye', '/quit', '/help', '/clear', '/status', '/export', '/setting']
         completer = SlashCommandCompleter(commands)
         auto_suggest = SlashCommandAutoSuggest(commands)
 
@@ -286,6 +553,7 @@ Commands:
   /clear              - Clear conversation history
   /status             - Show current session status
   /export [filename]  - Export conversation (md/txt/json)
+  /setting            - Open settings menu
 
 Keyboard Shortcuts:
   Ctrl+C              - Interrupt model generation
@@ -374,6 +642,14 @@ History Mode: {history_mode}
                     filename += '.md'
 
             export_conversation(history, filename, format, model_name)
+            continue
+
+        if user_input.lower() == "/setting":
+            # Load current config, open settings menu, and save if changed
+            user_config = load_user_config()
+            updated_config = show_settings_menu(user_config)
+            if save_user_config(updated_config):
+                print(_colored("✅ Settings saved successfully", "success"))
             continue
 
         if not user_input: continue
