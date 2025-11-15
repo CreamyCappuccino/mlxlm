@@ -35,6 +35,8 @@ from core import (
     _count_tokens,
     _estimate_kv_bytes,
     _stream_final_from_harmony,
+    load_user_config,
+    save_user_config,
 )
 
 # ANSI color codes for terminal output
@@ -50,6 +52,80 @@ COLORS = {
 def _colored(text: str, color_key: str) -> str:
     """Apply ANSI color to text."""
     return f"{COLORS.get(color_key, '')}{text}{COLORS['reset']}"
+
+
+def export_conversation(history: list[tuple[str, str]], filename: str, format: str = 'md', model_name: str = '') -> bool:
+    """
+    Export conversation history to a file.
+
+    Args:
+        history: List of (role, message) tuples
+        filename: Output filename
+        format: Export format ('md', 'txt', or 'json')
+        model_name: Model name for metadata
+
+    Returns:
+        bool: True if successful, False otherwise
+    """
+    from datetime import datetime
+
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    try:
+        if format == 'md':
+            content = f"# MLX-LM Chat Export\n"
+            content += f"**Model**: {model_name}\n"
+            content += f"**Date**: {timestamp}\n"
+            content += f"**Total Turns**: {len(history)}\n\n"
+            content += "---\n\n"
+
+            for role, message in history:
+                if role == 'user':
+                    content += f"### User:\n{message}\n\n"
+                else:
+                    content += f"### AI:\n{message}\n\n"
+                content += "---\n\n"
+
+        elif format == 'txt':
+            content = f"MLX-LM Chat Export\n"
+            content += f"Model: {model_name}\n"
+            content += f"Date: {timestamp}\n"
+            content += f"Total Turns: {len(history)}\n\n"
+            content += "=" * 80 + "\n\n"
+
+            for role, message in history:
+                if role == 'user':
+                    content += f"[User]\n{message}\n\n"
+                else:
+                    content += f"[AI]\n{message}\n\n"
+                content += "=" * 80 + "\n\n"
+
+        elif format == 'json':
+            import json
+            data = {
+                "model": model_name,
+                "export_date": timestamp,
+                "total_turns": len(history),
+                "conversation": [
+                    {"role": role, "content": message}
+                    for role, message in history
+                ]
+            }
+            content = json.dumps(data, indent=2, ensure_ascii=False)
+
+        else:
+            print(_colored(f"⚠️  Unknown format: {format}. Use 'md', 'txt', or 'json'.", "error"))
+            return False
+
+        with open(filename, 'w', encoding='utf-8') as f:
+            f.write(content)
+
+        print(_colored(f"✅ Exported to {filename}", "success"))
+        return True
+
+    except (PermissionError, OSError) as e:
+        print(_colored(f"⚠️  Error: Could not export to {filename} ({e})", "error"))
+        return False
 
 
 def run_model(
@@ -82,7 +158,7 @@ def run_model(
         model, tokenizer = load(model_name)
     except Exception as e:
         print(f"❌ Failed to load model: {e}"); return
-    print("✅ Model loaded. Enter your prompts! Type '/exit' or '/bye' to quit.\n")
+    print("✅ Model loaded. Enter your prompts! Type '/help' for commands or '/exit' to quit.\n")
 
     history: list[tuple[str,str]] = []
     sys_prompt = _apply_reasoning_to_system(system_prompt, reasoning)
@@ -162,8 +238,8 @@ def run_model(
                             return Suggestion(suggestion_text)
                 return None
 
-        # Create command completer and auto-suggest for /exit, /bye
-        commands = ['/exit', '/bye']
+        # Create command completer and auto-suggest for slash commands
+        commands = ['/exit', '/bye', '/quit', '/help', '/clear', '/status', '/export']
         completer = SlashCommandCompleter(commands)
         auto_suggest = SlashCommandAutoSuggest(commands)
 
@@ -195,8 +271,111 @@ def run_model(
             # Ctrl+D: Exit
             print(_colored("\n👋 Bye!", "success"))
             break
-        if user_input.lower() in ["/exit","/bye"]:
-            print(_colored("👋 Bye!", "success")); break
+        # Handle slash commands
+        if user_input.lower() in ["/exit", "/bye", "/quit"]:
+            print(_colored("👋 Bye!", "success"))
+            break
+
+        if user_input.lower() == "/help":
+            print("""
+📖 MLX-LM Interactive Commands:
+
+Commands:
+  /exit, /bye, /quit  - Exit the chat
+  /help               - Show this help message
+  /clear              - Clear conversation history
+  /status             - Show current session status
+  /export [filename]  - Export conversation (md/txt/json)
+
+Keyboard Shortcuts:
+  Ctrl+C              - Interrupt model generation
+  Ctrl+D              - Exit (EOF)
+  Ctrl+P / Ctrl+N     - Navigate history (previous/next)
+  Ctrl+R / Ctrl+A     - Move to beginning of line
+  Ctrl+O / Ctrl+E     - Move to end of line
+  Ctrl+J              - Insert newline
+  Option+Enter        - Insert newline (Mac/Linux)
+  Tab                 - Show command completions
+  → or Ctrl+E         - Accept inline suggestion
+""")
+            continue
+
+        if user_input.lower() == "/clear":
+            confirm = input(_colored("Clear conversation history? (yes/no) [no]: ", "warning")).strip().lower()
+            if confirm in ['yes', 'y']:
+                history.clear()
+                print(_colored("✅ Conversation history cleared", "success"))
+            else:
+                print(_colored("❌ Cancelled", "warning"))
+            continue
+
+        if user_input.lower() == "/status":
+            # Calculate statistics
+            user_count = sum(1 for r, _ in history if r == "user")
+            assistant_count = sum(1 for r, _ in history if r == "assistant")
+
+            # Calculate current token usage
+            try:
+                full_prompt = _render_prompt(chat_mode, tokenizer, sys_prompt, history)
+                current_tokens = _count_tokens(tokenizer, full_prompt)
+            except Exception:
+                current_tokens = 0
+
+            # Estimate model's context limit (rough estimate)
+            estimated_limit = 8192  # Default rough estimate
+
+            print(f"""
+📊 Current Status:
+
+Model: {model_name}
+Chat Mode: {chat_mode}
+History Mode: {history_mode}
+
+💬 Conversation:
+  User messages: {user_count}
+  Assistant messages: {assistant_count}
+  Total turns: {len(history)}
+
+🧮 Token Usage:
+  Current context: ~{current_tokens} tokens
+  Max tokens per response: {max_tokens}
+  Estimated limit: ~{estimated_limit} tokens (model dependent)
+  Usage: {(current_tokens / estimated_limit * 100):.1f}%
+
+⚙️  Settings:
+  Stream mode: {stream_mode}
+  Time limit: {time_limit or 'none'} sec
+""")
+            continue
+
+        if user_input.lower().startswith("/export"):
+            # Parse /export command: /export [filename]
+            parts = user_input.split(maxsplit=1)
+
+            if len(history) == 0:
+                print(_colored("⚠️  No conversation to export", "warning"))
+                continue
+
+            # Default filename with timestamp
+            from datetime import datetime
+            default_filename = f"conversation_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md"
+
+            filename = parts[1].strip() if len(parts) > 1 else default_filename
+
+            # Detect format from extension
+            if filename.endswith('.txt'):
+                format = 'txt'
+            elif filename.endswith('.json'):
+                format = 'json'
+            else:
+                # Default to markdown, add .md if no extension
+                format = 'md'
+                if not filename.endswith('.md'):
+                    filename += '.md'
+
+            export_conversation(history, filename, format, model_name)
+            continue
+
         if not user_input: continue
         history.append(("user", user_input))
 
