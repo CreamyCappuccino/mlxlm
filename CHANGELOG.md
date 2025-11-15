@@ -5,6 +5,45 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.6] - 2025-11-15
+
+### Added
+- **Interactive commands** for enhanced user experience in `mlxlm run`
+  - `/quit`: Exit command (alias for /exit and /bye)
+  - `/help`: Display all available commands and keyboard shortcuts
+  - `/clear`: Clear conversation history with confirmation prompt (default=no)
+  - `/status`: Show detailed session status including:
+    - Model name and chat mode
+    - Conversation statistics (user/assistant message counts)
+    - Token usage with percentage
+    - Current settings (stream mode, time limit)
+  - `/export [filename]`: Export conversation to file
+    - Supports 3 formats: md (Markdown), txt (Plain Text), json (JSON)
+    - Auto-detects format from file extension
+    - Default filename with timestamp if not specified
+    - Pretty formatting with "### User:" and "### AI:" sections
+  - `/setting`: Interactive settings menu with 4 categories:
+    - Default Behavior Settings (max tokens, stream mode, chat mode, history mode, time limit, reasoning level)
+    - Color Settings (placeholder for future customization)
+    - History Settings (max entries, max age in days)
+    - Export Settings (default format, timestamp inclusion, auto-save on exit)
+
+- **Configuration infrastructure** in `core.py`
+  - `get_default_config()`: Returns default configuration dictionary
+  - `load_user_config()`: Load and merge user config from `mlxlm_data/config.json`
+  - `save_user_config()`: Save configuration to disk
+  - `merge_configs()`: Recursive configuration merging
+  - Settings stored in `mlxlm_data/config.json` with defaults, colors, history, and export preferences
+
+### Changed
+- Startup message updated to mention `/help` for command list
+- Command completer and auto-suggest now include all new slash commands
+- All configuration values now customizable through `/setting` menu
+
+### Fixed
+- Input validation for all settings with helpful error messages
+- Safe Ctrl+C / Ctrl+D handling in all interactive menus
+
 ## [0.2.5] - 2025-11-15
 
 ### Added
