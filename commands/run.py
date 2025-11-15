@@ -111,16 +111,18 @@ def run_model(
         def _(event):
             event.current_buffer.insert_text('\n')
 
-        # Option+Up (Mac) / Alt+Up (Linux): Previous history (works in multiline)
-        # Note: Command key is not directly supported in prompt-toolkit
-        @kb.add('escape', 'up')
+        # Ctrl+, : Move cursor to beginning of line (alternative to Ctrl+A)
+        @kb.add('c-,')
         def _(event):
-            event.current_buffer.history_backward(count=1)
+            event.current_buffer.cursor_position = 0
 
-        # Option+Down (Mac) / Alt+Down (Linux): Next history (works in multiline)
-        @kb.add('escape', 'down')
+        # Ctrl+. : Move cursor to end of line (alternative to Ctrl+E)
+        @kb.add('c-.')
         def _(event):
-            event.current_buffer.history_forward(count=1)
+            event.current_buffer.cursor_position = len(event.current_buffer.text)
+
+        # Note: History navigation uses default Emacs bindings (Ctrl+P/Ctrl+N)
+        # Note: Command key is not directly supported in prompt-toolkit
 
         # Custom completer that only shows commands when input starts with /
         class SlashCommandCompleter(Completer):
