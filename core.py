@@ -561,3 +561,122 @@ def _stream_final_from_harmony(token_iter: any) -> any:
                 if flush: yield _clean(flush)
     if in_final and buf:
         yield _clean(buf)
+
+# ===== User Configuration Management =====
+
+def get_default_config() -> dict:
+    """
+    Return the default configuration for mlxlm.
+
+    Returns:
+        dict: Default configuration with all settings
+    """
+    return {
+        "version": "1.0",
+        "defaults": {
+            "max_tokens": 2048,
+            "stream_mode": "all",
+            "chat_mode": "auto",
+            "history": "on",
+            "time_limit": 0,
+            "reasoning": None
+        },
+        "history": {
+            "max_entries": 50,
+            "max_age_days": None
+        },
+        "colors": {
+            "user_prompt": "\033[1;37m",
+            "model_output": "\033[97m",
+            "error": "\033[91m",
+            "success": "\033[92m",
+            "warning": "\033[93m",
+            "reset": "\033[0m"
+        },
+        "export": {
+            "default_format": "md",
+            "include_timestamp": True,
+            "auto_save": False
+        }
+    }
+
+def get_config_path() -> Path:
+    """
+    Get the path to the user config file.
+
+    Returns:
+        Path: Path to mlxlm_data/config.json
+    """
+    project_root = Path(__file__).parent
+    data_dir = project_root / "mlxlm_data"
+    data_dir.mkdir(exist_ok=True)
+    return data_dir / "config.json"
+
+def load_user_config() -> dict:
+    """
+    Load user configuration from mlxlm_data/config.json.
+    If file doesn't exist or is invalid, return default config.
+
+    Returns:
+        dict: Merged configuration (default + user overrides)
+    """
+    config_path = get_config_path()
+    default_config = get_default_config()
+
+    if not config_path.exists():
+        return default_config
+
+    try:
+        with open(config_path, 'r', encoding='utf-8') as f:
+            user_config = json.load(f)
+
+        # Merge user config with defaults (user config takes precedence)
+        return merge_configs(default_config, user_config)
+    except (json.JSONDecodeError, PermissionError, OSError) as e:
+        # If config is corrupted, return defaults
+        print(f"⚠️  Warning: Could not load config.json ({e}), using defaults")
+        return default_config
+
+def save_user_config(config: dict) -> bool:
+    """
+    Save user configuration to mlxlm_data/config.json.
+
+    Args:
+        config: Configuration dictionary to save
+
+    Returns:
+        bool: True if successful, False otherwise
+    """
+    config_path = get_config_path()
+
+    try:
+        with open(config_path, 'w', encoding='utf-8') as f:
+            json.dump(config, f, indent=2, ensure_ascii=False)
+        return True
+    except (PermissionError, OSError) as e:
+        print(f"⚠️  Error: Could not save config.json ({e})")
+        return False
+
+def merge_configs(default: dict, user: dict) -> dict:
+    """
+    Recursively merge user configuration with default configuration.
+    User values take precedence over defaults.
+
+    Args:
+        default: Default configuration dictionary
+        user: User configuration dictionary
+
+    Returns:
+        dict: Merged configuration
+    """
+    merged = default.copy()
+
+    for key, value in user.items():
+        if key in merged and isinstance(merged[key], dict) and isinstance(value, dict):
+            # Recursively merge nested dictionaries
+            merged[key] = merge_configs(merged[key], value)
+        else:
+            # Override with user value
+            merged[key] = value
+
+    return merged
