@@ -324,5 +324,9 @@ def run_model(
                         raise
                 print("\n")
                 if _buf is not None: history.append(("assistant","".join(_buf)))
+        except KeyboardInterrupt:
+            # Ctrl+C during generation: Stop generation and return to prompt
+            print(_colored("\n\n⚠️  Generation interrupted. Returning to prompt.", "warning"))
+            continue
         except Exception as e:
             print(f"\n⚠️ Error generating response: {e}\n")
