@@ -17,6 +17,9 @@ try:
     from prompt_toolkit.key_binding import KeyBindings
     from prompt_toolkit.formatted_text import ANSI
     from prompt_toolkit.completion import Completer, Completion
+    from prompt_toolkit.auto_suggest import AutoSuggest, Suggestion
+    from prompt_toolkit.document import Document
+    from prompt_toolkit.buffer import Buffer
     from pathlib import Path
     PROMPT_TOOLKIT_AVAILABLE = True
 except ImportError:
@@ -140,14 +143,36 @@ def run_model(
                         if cmd_name.startswith(word):
                             yield Completion(cmd, start_position=-len(text))
 
-        # Create command completer for /exit, /bye
-        completer = SlashCommandCompleter(['/exit', '/bye'])
+        # Custom auto-suggest that shows inline suggestions for slash commands
+        class SlashCommandAutoSuggest(AutoSuggest):
+            """AutoSuggest that shows gray inline text for /exit and /bye commands"""
+            def __init__(self, commands):
+                self.commands = commands
+
+            def get_suggestion(self, buffer: Buffer, document: Document):
+                text = document.text
+                # Only suggest if text starts with / and is not complete
+                if text.startswith('/') and text not in self.commands:
+                    word = text[1:].lower()  # Remove / and lowercase
+                    for cmd in self.commands:
+                        cmd_name = cmd[1:].lower()  # Remove / from command
+                        if cmd_name.startswith(word) and cmd != text:
+                            # Return the remaining part as gray suggestion
+                            suggestion_text = cmd[len(text):]
+                            return Suggestion(suggestion_text)
+                return None
+
+        # Create command completer and auto-suggest for /exit, /bye
+        commands = ['/exit', '/bye']
+        completer = SlashCommandCompleter(commands)
+        auto_suggest = SlashCommandAutoSuggest(commands)
 
         session = PromptSession(
             history=FileHistory(str(history_file)),  # Persistent history
             key_bindings=kb,
             completer=completer,
             complete_while_typing=False,  # Only show completions when Tab is pressed
+            auto_suggest=auto_suggest,  # Show gray inline suggestions
             multiline=False,  # Single-line by default, but Shift+Enter adds newlines
         )
     else:
