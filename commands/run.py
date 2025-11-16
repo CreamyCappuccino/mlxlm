@@ -823,12 +823,10 @@ Select (1-4) [4]: """, end='')
                 history.clear()
                 print(_colored("✅ Conversation history cleared (screen unchanged)", "success"))
             elif choice == '2':
-                import os
                 os.system('clear' if os.name != 'nt' else 'cls')
                 print(_colored("✅ Screen cleared (conversation history preserved)", "success"))
             elif choice == '3':
                 history.clear()
-                import os
                 os.system('clear' if os.name != 'nt' else 'cls')
                 print("=" * 60)
                 print(_colored("🧹 Everything cleared! Starting fresh...", "success"))
