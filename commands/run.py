@@ -677,9 +677,19 @@ def run_model(
         time_limit: Hard time limit per turn in seconds (0=off)
         history_mode: Conversation history mode ('on'=full context, 'off'=Q&A only)
     """
-    # Load user config for settings like show_context_stats
+    # Load user config for settings and colors
     user_config = load_user_config()
     show_context_stats = user_config.get('defaults', {}).get('show_context_stats', False)
+
+    # Apply saved color theme to global COLORS
+    global COLORS
+    saved_colors = user_config.get('colors', {})
+    if saved_colors:
+        # Filter out non-color keys like 'theme' and 'custom_colors'
+        color_keys = ['user_prompt', 'model_output', 'error', 'success', 'warning', 'system', 'reset']
+        for key in color_keys:
+            if key in saved_colors:
+                COLORS[key] = saved_colors[key]
 
     print(f"🚀 Loading model {model_name}...")
     try:
