@@ -10,13 +10,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - **Interactive commands** for enhanced user experience in `mlxlm run`
   - `/quit`: Exit command (alias for /exit and /bye)
-  - `/help`: Display all available commands and keyboard shortcuts
-  - `/clear`: Clear conversation history with confirmation prompt (default=no)
+  - `/help`: Display all available commands and keyboard shortcuts (now with system color)
+  - `/clear`: Improved with 3 flexible options:
+    - Clear conversation only (keep screen)
+    - Clear screen only (keep conversation history)
+    - Clear both
+    - Cancel (default)
   - `/status`: Show detailed session status including:
     - Model name and chat mode
     - Conversation statistics (user/assistant message counts)
     - Token usage with percentage
     - Current settings (stream mode, time limit)
+    - Now displayed in system color for better visibility
   - `/export [filename]`: Export conversation to file
     - Supports 3 formats: md (Markdown), txt (Plain Text), json (JSON)
     - Auto-detects format from file extension
@@ -24,9 +29,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Pretty formatting with "### User:" and "### AI:" sections
   - `/setting`: Interactive settings menu with 4 categories:
     - Default Behavior Settings (max tokens, stream mode, chat mode, history mode, time limit, reasoning level)
-    - Color Settings (placeholder for future customization)
+    - **Color Settings** (fully implemented):
+      - 5 preset themes: Default, Nord, Dracula, Monokai, Solarized
+      - Custom theme creation with live color previews
+      - Support for 16-color codes (30-37, 90-97)
+      - Support for RGB hex (#RRGGBB) and comma-separated (R,G,B)
+      - Real-time color preview for each element
+      - Save custom themes to config
     - History Settings (max entries, max age in days)
     - Export Settings (default format, timestamp inclusion, auto-save on exit)
+
+- **Color customization infrastructure**
+  - Added 'system' color for command outputs (bright gray)
+  - 5 built-in color themes with carefully selected palettes
+  - `parse_color_input()`: Flexible color input parser supporting multiple formats
+  - `edit_custom_colors()`: Interactive custom theme editor with live preview
+  - Theme changes apply immediately and persist in config
 
 - **Configuration infrastructure** in `core.py`
   - `get_default_config()`: Returns default configuration dictionary

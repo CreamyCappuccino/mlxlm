@@ -41,17 +41,114 @@ from core import (
 
 # ANSI color codes for terminal output
 COLORS = {
-    'user_prompt': '\033[1;37m',      # Bold white (浅めの灰色に見える)
+    'user_prompt': '\033[1;37m',      # Bold white
     'model_output': '\033[97m',       # Bright white
     'error': '\033[91m',              # Bright red
     'success': '\033[92m',            # Bright green
     'warning': '\033[93m',            # Bright yellow
+    'system': '\033[90m',             # Bright gray (for system messages)
     'reset': '\033[0m',               # Reset
+}
+
+# Preset color themes
+COLOR_THEMES = {
+    'default': {
+        'user_prompt': '\033[1;37m',
+        'model_output': '\033[97m',
+        'error': '\033[91m',
+        'success': '\033[92m',
+        'warning': '\033[93m',
+        'system': '\033[90m',
+        'reset': '\033[0m',
+    },
+    'nord': {
+        'user_prompt': '\033[96m',     # Cyan
+        'model_output': '\033[97m',    # White
+        'error': '\033[91m',           # Bright red
+        'success': '\033[92m',         # Bright green
+        'warning': '\033[93m',         # Bright yellow
+        'system': '\033[90m',          # Gray
+        'reset': '\033[0m',
+    },
+    'dracula': {
+        'user_prompt': '\033[95m',     # Magenta
+        'model_output': '\033[97m',    # White
+        'error': '\033[91m',           # Bright red
+        'success': '\033[92m',         # Bright green
+        'warning': '\033[93m',         # Bright yellow
+        'system': '\033[90m',          # Gray
+        'reset': '\033[0m',
+    },
+    'monokai': {
+        'user_prompt': '\033[93m',     # Bright yellow
+        'model_output': '\033[97m',    # White
+        'error': '\033[91m',           # Bright red
+        'success': '\033[92m',         # Bright green
+        'warning': '\033[93m',         # Bright yellow
+        'system': '\033[90m',          # Gray
+        'reset': '\033[0m',
+    },
+    'solarized': {
+        'user_prompt': '\033[96m',     # Cyan
+        'model_output': '\033[37m',    # White
+        'error': '\033[31m',           # Red
+        'success': '\033[32m',         # Green
+        'warning': '\033[33m',         # Yellow
+        'system': '\033[90m',          # Gray
+        'reset': '\033[0m',
+    },
 }
 
 def _colored(text: str, color_key: str) -> str:
     """Apply ANSI color to text."""
     return f"{COLORS.get(color_key, '')}{text}{COLORS['reset']}"
+
+
+def parse_color_input(user_input: str) -> str | None:
+    """
+    Convert user input to ANSI color code.
+
+    Supports:
+    - 16-color codes: 30-37, 90-97
+    - RGB hex: #RRGGBB
+    - RGB comma-separated: R,G,B
+
+    Args:
+        user_input: User's color input
+
+    Returns:
+        ANSI color code string, or None if invalid
+    """
+    user_input = user_input.strip()
+
+    # Number only (16 colors)
+    if user_input.isdigit():
+        code = int(user_input)
+        if 30 <= code <= 37 or 90 <= code <= 97:
+            return f"\033[{code}m"
+
+    # #RRGGBB format
+    if user_input.startswith('#') and len(user_input) == 7:
+        try:
+            r = int(user_input[1:3], 16)
+            g = int(user_input[3:5], 16)
+            b = int(user_input[5:7], 16)
+            return f"\033[38;2;{r};{g};{b}m"
+        except ValueError:
+            pass
+
+    # R,G,B format
+    if ',' in user_input:
+        try:
+            parts = user_input.split(',')
+            if len(parts) == 3:
+                r, g, b = map(int, parts)
+                if all(0 <= c <= 255 for c in [r, g, b]):
+                    return f"\033[38;2;{r};{g};{b}m"
+        except ValueError:
+            pass
+
+    return None
 
 
 def export_conversation(history: list[tuple[str, str]], filename: str, format: str = 'md', model_name: str = '') -> bool:
@@ -267,18 +364,156 @@ Select (1-7): """, end='')
 
 
 def edit_colors(config: dict) -> dict:
-    """Edit color settings."""
-    print("""
-🎨 Color Settings:
+    """Edit color settings with preset themes and custom editing."""
+    while True:
+        current_theme = config.get('colors', {}).get('theme', 'default')
+        print(f"""
+🎨 Color Settings (Current: {current_theme}):
 
-Note: Custom color editing coming in future version.
-Current colors are pre-configured and working well.
+1. Default
+2. Nord
+3. Dracula
+4. Monokai
+5. Solarized
+6. Custom (create your own)
+7. 🔙 Back
 
-Press Enter to return...""", end='')
-    try:
-        input()
-    except (KeyboardInterrupt, EOFError):
-        print()
+Select (1-7): """, end='')
+
+        try:
+            choice = input().strip()
+        except (KeyboardInterrupt, EOFError):
+            print()
+            break
+
+        if choice in ['1', '2', '3', '4', '5']:
+            theme_map = {'1': 'default', '2': 'nord', '3': 'dracula', '4': 'monokai', '5': 'solarized'}
+            selected_theme = theme_map[choice]
+            config['colors'] = {
+                'theme': selected_theme,
+                **COLOR_THEMES[selected_theme]
+            }
+            # Update global COLORS
+            global COLORS
+            COLORS.update(COLOR_THEMES[selected_theme])
+            print(_colored(f"✅ Theme changed to {selected_theme}", "success"))
+
+        elif choice == '6':
+            # Custom theme editing
+            config = edit_custom_colors(config)
+
+        elif choice == '7':
+            break
+        else:
+            print(_colored("⚠️  Invalid choice. Please select 1-7.", "warning"))
+
+    return config
+
+
+def edit_custom_colors(config: dict) -> dict:
+    """Edit custom color theme."""
+    # Start with current colors or default
+    current_theme = config.get('colors', {}).get('theme', 'default')
+    if current_theme == 'custom' and 'custom_colors' in config.get('colors', {}):
+        custom = config['colors']['custom_colors'].copy()
+    else:
+        # Start from current theme or default
+        base_theme = current_theme if current_theme != 'custom' else 'default'
+        custom = COLOR_THEMES[base_theme].copy()
+
+    color_names = {
+        '1': ('user_prompt', 'User Prompt'),
+        '2': ('model_output', 'Model Output'),
+        '3': ('error', 'Error'),
+        '4': ('success', 'Success'),
+        '5': ('warning', 'Warning'),
+        '6': ('system', 'System'),
+    }
+
+    def get_color_description(ansi_code: str) -> str:
+        """Convert ANSI code to human-readable description."""
+        color_map = {
+            '\033[30m': 'black', '\033[31m': 'red', '\033[32m': 'green',
+            '\033[33m': 'yellow', '\033[34m': 'blue', '\033[35m': 'magenta',
+            '\033[36m': 'cyan', '\033[37m': 'white',
+            '\033[90m': 'gray', '\033[91m': 'bright red', '\033[92m': 'bright green',
+            '\033[93m': 'bright yellow', '\033[94m': 'bright blue', '\033[95m': 'bright magenta',
+            '\033[96m': 'bright cyan', '\033[97m': 'bright white', '\033[1;37m': 'bold white',
+        }
+        return color_map.get(ansi_code, 'custom')
+
+    while True:
+        print(f"""
+🎨 Customize Colors (based on: {current_theme}):
+""")
+        for key, (color_key, display_name) in color_names.items():
+            ansi_code = custom.get(color_key, '')
+            desc = get_color_description(ansi_code)
+            # Display with color preview
+            print(f"{key}. {display_name}: {ansi_code}{desc}\033[0m")
+
+        print("""
+7. ✅ Save as Custom theme
+8. 🔙 Cancel
+
+Select (1-8): """, end='')
+
+        try:
+            choice = input().strip()
+        except (KeyboardInterrupt, EOFError):
+            print()
+            break
+
+        if choice in color_names:
+            color_key, display_name = color_names[choice]
+            current_code = custom.get(color_key, '')
+            current_desc = get_color_description(current_code)
+
+            print(f"\nCurrent: {current_code}{current_desc}\033[0m")
+            print("Enter color (30-37 or 90-97 for basic colors, #RRGGBB for RGB, or R,G,B): ", end='')
+
+            try:
+                user_input = input().strip()
+            except (KeyboardInterrupt, EOFError):
+                print()
+                continue
+
+            new_code = parse_color_input(user_input)
+            if new_code:
+                custom[color_key] = new_code
+                print(f"\n✅ Preview: {new_code}{display_name}\033[0m")
+                print("Apply this color? (yes/no): ", end='')
+                try:
+                    confirm = input().strip().lower()
+                    if confirm not in ['yes', 'y']:
+                        # Revert
+                        custom[color_key] = current_code
+                        print(_colored("❌ Change cancelled", "warning"))
+                except (KeyboardInterrupt, EOFError):
+                    print()
+                    custom[color_key] = current_code
+            else:
+                print(_colored("⚠️  Invalid color format. Try again.", "warning"))
+
+        elif choice == '7':
+            # Save custom theme
+            config['colors'] = {
+                'theme': 'custom',
+                'custom_colors': custom,
+                **custom
+            }
+            # Update global COLORS
+            global COLORS
+            COLORS.update(custom)
+            print(_colored("✅ Custom theme saved!", "success"))
+            break
+
+        elif choice == '8':
+            print(_colored("❌ Custom editing cancelled", "warning"))
+            break
+
+        else:
+            print(_colored("⚠️  Invalid choice. Please select 1-8.", "warning"))
 
     return config
 
@@ -544,13 +779,13 @@ def run_model(
             break
 
         if user_input.lower() == "/help":
-            print("""
+            help_text = """
 📖 MLX-LM Interactive Commands:
 
 Commands:
   /exit, /bye, /quit  - Exit the chat
   /help               - Show this help message
-  /clear              - Clear conversation history
+  /clear              - Clear conversation history (with options)
   /status             - Show current session status
   /export [filename]  - Export conversation (md/txt/json)
   /setting            - Open settings menu
@@ -565,14 +800,39 @@ Keyboard Shortcuts:
   Option+Enter        - Insert newline (Mac/Linux)
   Tab                 - Show command completions
   → or Ctrl+E         - Accept inline suggestion
-""")
+"""
+            print(_colored(help_text, "system"))
             continue
 
         if user_input.lower() == "/clear":
-            confirm = input(_colored("Clear conversation history? (yes/no) [no]: ", "warning")).strip().lower()
-            if confirm in ['yes', 'y']:
+            print("""
+Clear options:
+1. Clear conversation only (keep screen)
+2. Clear screen only (keep conversation history)
+3. Clear both
+4. Cancel
+
+Select (1-4) [4]: """, end='')
+            try:
+                choice = input().strip()
+            except (KeyboardInterrupt, EOFError):
+                print()
+                choice = '4'
+
+            if choice == '1':
                 history.clear()
-                print(_colored("✅ Conversation history cleared", "success"))
+                print(_colored("✅ Conversation history cleared (screen unchanged)", "success"))
+            elif choice == '2':
+                import os
+                os.system('clear' if os.name != 'nt' else 'cls')
+                print(_colored("✅ Screen cleared (conversation history preserved)", "success"))
+            elif choice == '3':
+                history.clear()
+                import os
+                os.system('clear' if os.name != 'nt' else 'cls')
+                print("=" * 60)
+                print(_colored("🧹 Everything cleared! Starting fresh...", "success"))
+                print("=" * 60)
             else:
                 print(_colored("❌ Cancelled", "warning"))
             continue
@@ -592,7 +852,7 @@ Keyboard Shortcuts:
             # Estimate model's context limit (rough estimate)
             estimated_limit = 8192  # Default rough estimate
 
-            print(f"""
+            status_text = f"""
 📊 Current Status:
 
 Model: {model_name}
@@ -613,7 +873,8 @@ History Mode: {history_mode}
 ⚙️  Settings:
   Stream mode: {stream_mode}
   Time limit: {time_limit or 'none'} sec
-""")
+"""
+            print(_colored(status_text, "system"))
             continue
 
         if user_input.lower().startswith("/export"):
