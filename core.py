@@ -579,7 +579,8 @@ def get_default_config() -> dict:
             "chat_mode": "auto",
             "history": "on",
             "time_limit": 0,
-            "reasoning": None
+            "reasoning": None,
+            "show_context_stats": False
         },
         "history": {
             "max_entries": 50,

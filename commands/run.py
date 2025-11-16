@@ -273,6 +273,7 @@ def edit_defaults(config: dict) -> dict:
     """Edit default behavior settings."""
     while True:
         defaults = config['defaults']
+        show_stats = defaults.get('show_context_stats', False)
         print(f"""
 💬 Default Behavior Settings:
 
@@ -282,9 +283,10 @@ def edit_defaults(config: dict) -> dict:
 4. History Mode: {defaults['history']}
 5. Time Limit: {defaults['time_limit']} sec
 6. Reasoning Level: {defaults['reasoning'] or 'None'}
-7. 🔙 Back
+7. Show Context Stats: {'On' if show_stats else 'Off'}
+8. 🔙 Back
 
-Select (1-7): """, end='')
+Select (1-8): """, end='')
 
         try:
             choice = input().strip()
@@ -356,9 +358,18 @@ Select (1-7): """, end='')
                 print(_colored("⚠️  Invalid level. Use low/medium/high/none", "warning"))
 
         elif choice == '7':
+            print("Show context stats (on/off): ", end='')
+            value = input().strip().lower()
+            if value in ['on', 'off']:
+                config['defaults']['show_context_stats'] = (value == 'on')
+                print(_colored(f"✅ Show context stats set to {value}", "success"))
+            else:
+                print(_colored("⚠️  Invalid value. Use on/off", "warning"))
+
+        elif choice == '8':
             break
         else:
-            print(_colored("⚠️  Invalid choice. Please select 1-7.", "warning"))
+            print(_colored("⚠️  Invalid choice. Please select 1-8.", "warning"))
 
     return config
 
@@ -666,6 +677,10 @@ def run_model(
         time_limit: Hard time limit per turn in seconds (0=off)
         history_mode: Conversation history mode ('on'=full context, 'off'=Q&A only)
     """
+    # Load user config for settings like show_context_stats
+    user_config = load_user_config()
+    show_context_stats = user_config.get('defaults', {}).get('show_context_stats', False)
+
     print(f"🚀 Loading model {model_name}...")
     try:
         model, tokenizer = load(model_name)
@@ -771,11 +786,11 @@ def run_model(
         try:
             if session:
                 # Use prompt-toolkit for enhanced input experience with colored prompt
-                prompt_text = ANSI(_colored("📝 Prompt: ", "user_prompt"))
+                prompt_text = ANSI(_colored("💬 User: ", "user_prompt"))
                 user_input = session.prompt(prompt_text).strip()
             else:
                 # Fallback to plain input if prompt-toolkit not available
-                user_input = input(_colored("📝 Prompt: ", "user_prompt")).strip()
+                user_input = input(_colored("💬 User: ", "user_prompt")).strip()
         except KeyboardInterrupt:
             # Ctrl+C: Cancel current input, don't exit
             print(_colored("\n⚠️  Cancelled. Type '/exit' or '/bye' to quit.", "warning"))
@@ -924,9 +939,6 @@ History Mode: {history_mode}
 
         if not user_input: continue
 
-        # Display user input with color
-        print(_colored(f"💬 You: {user_input}", "user_prompt"))
-
         history.append(("user", user_input))
 
         try:
@@ -941,27 +953,28 @@ History Mode: {history_mode}
             print(f"[DEBUG] chat_mode={chat_mode} stream_mode={stream_mode} history(user={u_cnt}, assistant={a_cnt})")
             print(f"[DEBUG] rendered_prompt_chars={len(full_prompt)}")
 
-        # RAM estimate（KV）
-        try:
-            alias_dict_cfg = load_alias_dict()
-            cache_key = resolve_to_cache_key(model_name, alias_dict_cfg)
-            cfg = load_config_for_model(cache_key) or {}
-            if isinstance(cfg.get("text_config"), dict):
-                cfg = {**cfg, **cfg["text_config"]}
-            layers = cfg.get("num_hidden_layers") or cfg.get("n_layer") or cfg.get("layers") or 0
-            hidden = cfg.get("hidden_size") or cfg.get("n_embd") or 0
-            prompt_tok = _count_tokens(tokenizer, full_prompt)
-            ctx_tok = prompt_tok + int(max_tokens)
-            dtype_bytes = int(os.getenv("MLXLM_KV_BYTES","2"))
-            if dtype_bytes not in (1,2,4): dtype_bytes=2
-            est_bytes = _estimate_kv_bytes(int(layers or 0), int(hidden or 0), int(ctx_tok), dtype_bytes=dtype_bytes)
-            print(
-                f"\n🧮 Context tokens: prompt≈{prompt_tok}, new≤{max_tokens}, total≤{ctx_tok}\n"
-                f"🧠 KV cache est.: {_human_bytes(est_bytes)} (layers={layers or 'unknown'}, hidden={hidden or 'unknown'}, dtype={dtype_bytes*8}-bit)\n"
-            )
-        except Exception as _e:
-            if os.getenv("MLXLM_DEBUG") == "1":
-                print(f"[DEBUG] RAM estimate failed: {_e}")
+        # RAM estimate（KV）- only show if enabled in settings
+        if show_context_stats:
+            try:
+                alias_dict_cfg = load_alias_dict()
+                cache_key = resolve_to_cache_key(model_name, alias_dict_cfg)
+                cfg = load_config_for_model(cache_key) or {}
+                if isinstance(cfg.get("text_config"), dict):
+                    cfg = {**cfg, **cfg["text_config"]}
+                layers = cfg.get("num_hidden_layers") or cfg.get("n_layer") or cfg.get("layers") or 0
+                hidden = cfg.get("hidden_size") or cfg.get("n_embd") or 0
+                prompt_tok = _count_tokens(tokenizer, full_prompt)
+                ctx_tok = prompt_tok + int(max_tokens)
+                dtype_bytes = int(os.getenv("MLXLM_KV_BYTES","2"))
+                if dtype_bytes not in (1,2,4): dtype_bytes=2
+                est_bytes = _estimate_kv_bytes(int(layers or 0), int(hidden or 0), int(ctx_tok), dtype_bytes=dtype_bytes)
+                print(
+                    f"\n🧮 Context tokens: prompt≈{prompt_tok}, new≤{max_tokens}, total≤{ctx_tok}\n"
+                    f"🧠 KV cache est.: {_human_bytes(est_bytes)} (layers={layers or 'unknown'}, hidden={hidden or 'unknown'}, dtype={dtype_bytes*8}-bit)\n"
+                )
+            except Exception as _e:
+                if os.getenv("MLXLM_DEBUG") == "1":
+                    print(f"[DEBUG] RAM estimate failed: {_e}")
 
         # stop sequences
         stop_seqs = stop[:] if isinstance(stop, list) else None
@@ -977,7 +990,7 @@ History Mode: {history_mode}
 
         # generate
         try:
-            print("\n🧠 Output:\n", end="", flush=True)
+            print("\n🤖 AI:\n", end="", flush=True)
             start_ts = time.time()
 
             # Helper: try call with stop; if TypeError (unexpected 'stop'), retry without it
