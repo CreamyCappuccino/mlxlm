@@ -178,12 +178,6 @@ def run_model(
         completer = SlashCommandCompleter(commands)
         auto_suggest = SlashCommandAutoSuggest(commands)
 
-        # Create style for input text (apply user_prompt color to typed text)
-        input_style_str = ansi_to_prompt_toolkit_style(COLORS.get('user_prompt', '\033[1;37m'))
-        input_style = Style.from_dict({
-            '': input_style_str,  # Default style for input text
-        })
-
         session = PromptSession(
             history=FileHistory(str(history_file)),  # Persistent history
             key_bindings=kb,
@@ -191,7 +185,7 @@ def run_model(
             complete_while_typing=False,  # Only show completions when Tab is pressed
             auto_suggest=auto_suggest,  # Show gray inline suggestions
             multiline=False,  # Single-line by default, but Shift+Enter adds newlines
-            style=input_style,  # Apply color to input text
+            # Note: style is applied per-prompt to reflect color changes
         )
     else:
         session = None
@@ -199,9 +193,13 @@ def run_model(
     while True:
         try:
             if session:
+                # Create style dynamically to reflect current color settings
+                input_style_str = ansi_to_prompt_toolkit_style(COLORS.get('user_prompt', '\033[1;37m'))
+                input_style = Style.from_dict({'': input_style_str})
+
                 # Use prompt-toolkit for enhanced input experience with colored prompt
                 prompt_text = ANSI(_colored("💬 User: ", "user_prompt"))
-                user_input = session.prompt(prompt_text).strip()
+                user_input = session.prompt(prompt_text, style=input_style).strip()
             else:
                 # Fallback to plain input if prompt-toolkit not available
                 user_input = input(_colored("💬 User: ", "user_prompt")).strip()
