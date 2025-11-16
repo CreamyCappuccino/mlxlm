@@ -301,7 +301,6 @@ def run_model(
                 continue
 
             # Default filename with timestamp
-            from datetime import datetime
             default_filename = f"conversation_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md"
 
             filename = parts[1].strip() if len(parts) > 1 else default_filename
