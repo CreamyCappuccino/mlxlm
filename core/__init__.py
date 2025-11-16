@@ -12,7 +12,8 @@ from huggingface_hub import HfApi
 
 # ===== Alias/Paths =====
 HF_CACHE_PATH = os.path.expanduser("~/.cache/huggingface/hub")
-alias_file_path = os.path.join(os.path.dirname(__file__), ".mlxlm_aliases.json")
+# Project root is parent directory of core/
+alias_file_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".mlxlm_aliases.json")
 
 def load_alias_dict() -> dict:
     try:
