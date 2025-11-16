@@ -243,9 +243,9 @@ def show_settings_menu(config: dict) -> dict:
 2. 🎨 Color Settings
 3. 📚 User Prompt History
 4. 💾 Export Settings
-5. 🔙 Back
+0. 🔙 Back
 
-Select (1-5): """, end='')
+Select (0-4): """, end='')
 
         try:
             choice = input().strip()
@@ -261,10 +261,10 @@ Select (1-5): """, end='')
             config = edit_history(config)
         elif choice == '4':
             config = edit_export(config)
-        elif choice == '5':
+        elif choice == '0':
             break
         else:
-            print(_colored("⚠️  Invalid choice. Please select 1-5.", "warning"))
+            print(_colored("⚠️  Invalid choice. Please select 0-4.", "warning"))
 
     return config
 
@@ -284,9 +284,9 @@ def edit_defaults(config: dict) -> dict:
 5. Time Limit: {defaults['time_limit']} sec
 6. Reasoning Level: {defaults['reasoning'] or 'None'}
 7. Show Context Stats: {'On' if show_stats else 'Off'}
-8. 🔙 Back
+0. 🔙 Back
 
-Select (1-8): """, end='')
+Select (0-7): """, end='')
 
         try:
             choice = input().strip()
@@ -366,10 +366,10 @@ Select (1-8): """, end='')
             else:
                 print(_colored("⚠️  Invalid value. Use on/off", "warning"))
 
-        elif choice == '8':
+        elif choice == '0':
             break
         else:
-            print(_colored("⚠️  Invalid choice. Please select 1-8.", "warning"))
+            print(_colored("⚠️  Invalid choice. Please select 0-7.", "warning"))
 
     return config
 
@@ -387,9 +387,9 @@ def edit_colors(config: dict) -> dict:
 4. Monokai
 5. Solarized
 6. Custom (create your own)
-7. 🔙 Back
+0. 🔙 Back
 
-Select (1-7): """, end='')
+Select (0-6): """, end='')
 
         try:
             choice = input().strip()
@@ -413,10 +413,10 @@ Select (1-7): """, end='')
             # Custom theme editing
             config = edit_custom_colors(config)
 
-        elif choice == '7':
+        elif choice == '0':
             break
         else:
-            print(_colored("⚠️  Invalid choice. Please select 1-7.", "warning"))
+            print(_colored("⚠️  Invalid choice. Please select 0-6.", "warning"))
 
     return config
 
@@ -465,9 +465,9 @@ def edit_custom_colors(config: dict) -> dict:
 
         print("""
 7. ✅ Save as Custom theme
-8. 🔙 Cancel
+0. 🔙 Cancel
 
-Select (1-8): """, end='')
+Select (0-7): """, end='')
 
         try:
             choice = input().strip()
@@ -530,12 +530,12 @@ Select (1-8): """, end='')
             print(_colored("✅ Custom theme saved!", "success"))
             break
 
-        elif choice == '8':
+        elif choice == '0':
             print(_colored("❌ Custom editing cancelled", "warning"))
             break
 
         else:
-            print(_colored("⚠️  Invalid choice. Please select 1-8.", "warning"))
+            print(_colored("⚠️  Invalid choice. Please select 0-7.", "warning"))
 
     return config
 
@@ -549,9 +549,9 @@ def edit_history(config: dict) -> dict:
 
 1. Max Entries: {hist['max_entries']}
 2. Max Age (days): {hist['max_age_days'] or 'Unlimited'}
-3. 🔙 Back
+0. 🔙 Back
 
-Select (1-3): """, end='')
+Select (0-2): """, end='')
 
         try:
             choice = input().strip()
@@ -583,10 +583,10 @@ Select (1-3): """, end='')
             except ValueError:
                 print(_colored("⚠️  Invalid number", "warning"))
 
-        elif choice == '3':
+        elif choice == '0':
             break
         else:
-            print(_colored("⚠️  Invalid choice. Please select 1-3.", "warning"))
+            print(_colored("⚠️  Invalid choice. Please select 0-2.", "warning"))
 
     return config
 
@@ -601,9 +601,9 @@ def edit_export(config: dict) -> dict:
 1. Default Format: {exp['default_format']}
 2. Include Timestamp: {exp['include_timestamp']}
 3. Auto Save on Exit: {exp['auto_save']}
-4. 🔙 Back
+0. 🔙 Back
 
-Select (1-4): """, end='')
+Select (0-3): """, end='')
 
         try:
             choice = input().strip()
@@ -644,10 +644,10 @@ Select (1-4): """, end='')
             else:
                 print(_colored("⚠️  Invalid value. Use yes/no", "warning"))
 
-        elif choice == '4':
+        elif choice == '0':
             break
         else:
-            print(_colored("⚠️  Invalid choice. Please select 1-4.", "warning"))
+            print(_colored("⚠️  Invalid choice. Please select 0-3.", "warning"))
 
     return config
 
