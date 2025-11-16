@@ -609,10 +609,24 @@ def get_config_path() -> Path:
     Returns:
         Path: Path to mlxlm_data/config.json
     """
-    project_root = Path(__file__).parent
+    # Project root is parent.parent because we're in core/__init__.py
+    project_root = Path(__file__).parent.parent
     data_dir = project_root / "mlxlm_data"
     data_dir.mkdir(exist_ok=True)
     return data_dir / "config.json"
+
+def get_mlxlm_data_dir() -> Path:
+    """
+    Get the path to the mlxlm_data directory.
+
+    Returns:
+        Path: Path to mlxlm_data/ directory
+    """
+    # Project root is parent.parent because we're in core/__init__.py
+    project_root = Path(__file__).parent.parent
+    data_dir = project_root / "mlxlm_data"
+    data_dir.mkdir(exist_ok=True)
+    return data_dir
 
 def load_user_config() -> dict:
     """
