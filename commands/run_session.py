@@ -32,8 +32,17 @@ def rename_current_session(session_id: str, current_name: str) -> str:
     try:
         new_name = input(_colored("Enter new name (or leave blank): ", "user_prompt")).strip()
 
-        # Update session
-        update_session_name(session_id, new_name)
+        # Check if session is saved on disk
+        from core.session_utils import get_sessions_dir
+        from pathlib import Path
+        session_file = get_sessions_dir() / f"{session_id}.json"
+
+        if session_file.exists():
+            # Session is saved, update the file
+            update_session_name(session_id, new_name)
+        else:
+            # Session not saved yet, just update in memory (will be saved on exit)
+            print(_colored("ℹ️  Session will be saved with this name on exit", "system"))
 
         if new_name:
             print(_colored(f'✅ Session renamed to "{new_name}"', "success"))
