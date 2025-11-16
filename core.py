@@ -598,6 +598,9 @@ def get_default_config() -> dict:
             "default_format": "md",
             "include_timestamp": True,
             "auto_save": False
+        },
+        "sessions": {
+            "auto_save_interval": 300
         }
     }
 
