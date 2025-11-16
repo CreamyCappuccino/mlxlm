@@ -155,6 +155,49 @@ If it does:
 
 ---
 
+## 📋 Development Lifecycle
+
+### Specification Confirmation Phase
+- **Who**: Claude Cloud (discusses with user)
+- **What**: Finalize feature requirements and specifications
+- **When**: User confirms feature details
+- **Output**: Confirmed specs ready for planning
+
+### Implementation Planning Phase
+- **Who**: Claude Cloud
+- **What**: Code structure decisions, file locations, implementation approach, coding considerations
+- **When**: After specs are confirmed, before coding starts
+- **Output**: Plan memory created (e.g., MM259 for v0.2.6)
+  - Records: Feature list, implementation notes, scheduling
+  - Format: Simple outline with ✅/⏳ status markers
+
+### Implementation Phase
+- **Who**: Claude Cloud
+- **What**: Feature development and bug fixes
+- **When**: After implementation planning is complete
+- **Output**: Session branch with commits
+
+### Testing & Release Phase
+- **Who**: Claude Local
+- **What**: Pull → test → merge → tag → release
+- **When**: After implementation is complete and pushed
+- **Output**:
+  - Plan memory updated (✅ mark for completed features)
+  - Detail memory created (e.g., MM300 for implementation specifics)
+  - Hub memory updated (MM290 references new records)
+
+### Important Note: Flexibility
+This workflow is a guideline for smooth collaboration. Real-world projects may require adjustments due to:
+- Unexpected issues during implementation
+- Rapid iteration on features
+- Claude Local working independently (without Cloud involvement)
+- Specification changes mid-development
+
+**If situations arise that don't fit this workflow, adapt as needed.**
+Memory records should reflect what actually happened, not force reality into the plan.
+
+---
+
 ## ⚠️ Common Mistakes to Avoid
 
 ❌ **Claude Cloud**:
@@ -184,6 +227,39 @@ Before starting work:
 - [ ] `git fetch origin && git pull origin dev`
 - [ ] Check for new tags: `git tag -l`
 - [ ] Review latest commits: `git log -5 --oneline`
+
+---
+
+## 💡 Code Quality & Best Practices
+
+### External Library Usage
+
+When integrating external libraries (e.g., prompt-toolkit, MLX), follow these principles:
+
+1. **Verify Official Documentation First**
+   - ⚠️ Don't assume library behavior based on previous experience or partial knowledge
+   - ✅ Check official docs/source code for:
+     - Correct API parameter names and types
+     - Special key formats or naming conventions (e.g., `''` for default styles in prompt-toolkit)
+     - Version-specific behavior differences
+   - 💡 Example: prompt-toolkit uses `''` (empty string) for default style, not `'default'`
+
+2. **Create Adapter/Conversion Layers**
+   - ✅ When using library-specific formats, create a conversion layer to your internal format
+   - ✅ Store data in standard/portable formats (e.g., ANSI codes for colors, not library-specific codes)
+   - ✅ Convert to library format only when needed
+   - **Benefit**: Easy library switching, better testability, cleaner separation of concerns
+   - Example: `ansi_to_prompt_toolkit_style()` converts ANSI → prompt-toolkit styles
+
+3. **Test Library-Specific Code**
+   - ✅ Create unit tests for conversion functions
+   - ✅ Pure functions (input → output) are easier to test than integrated code
+   - ✅ Mock or isolate library dependencies in tests
+
+4. **Document Non-Obvious Integrations**
+   - ✅ Add comments explaining library-specific behavior or "gotchas"
+   - ✅ Reference official docs in comments when implementation differs from intuition
+   - Example: "Empty string key `''` sets default style for entire input text per prompt-toolkit spec"
 
 ---
 
