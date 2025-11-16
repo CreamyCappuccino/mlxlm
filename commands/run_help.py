@@ -12,16 +12,21 @@ def handle_help_command() -> None:
 📖 MLX-LM Interactive Commands:
 
 Commands:
-  /exit, /bye, /quit  - Exit the chat
+  /exit, /bye, /quit  - Save session and exit
   /help               - Show this help message
   /clear              - Clear conversation history (with options)
   /status             - Show current session status
   /export [filename]  - Export conversation (md/txt/json)
   /setting            - Open settings menu
 
+Session Management:
+  /save               - Save current session manually
+  /resume             - Resume a previous session
+  /session            - Session management menu
+
 Keyboard Shortcuts:
   Ctrl+C              - Interrupt model generation
-  Ctrl+D              - Exit (EOF)
+  Ctrl+D              - Save session and exit (EOF)
   Ctrl+P / Ctrl+N     - Navigate history (previous/next)
   Ctrl+R / Ctrl+A     - Move to beginning of line
   Ctrl+O / Ctrl+E     - Move to end of line

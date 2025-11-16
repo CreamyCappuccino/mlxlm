@@ -47,7 +47,14 @@ from .run_export import export_conversation
 from .run_help import handle_help_command
 from .run_clear import handle_clear_command
 from .run_status import handle_status_command
+from .run_save import handle_save_command
+from .run_resume import handle_resume_command
+from .run_session import show_session_menu
 from .settings import show_settings_menu
+
+# Import session utilities
+from core.session_utils import create_session_id, build_session_data, save_session
+from datetime import datetime
 
 def run_model(
     model_name: str,
@@ -87,6 +94,13 @@ def run_model(
         for key in color_keys:
             if key in saved_colors:
                 COLORS[key] = saved_colors[key]
+
+    # Initialize session management
+    session_id = create_session_id()
+    session_name = ""
+    session_created_at = datetime.now().isoformat()
+    last_auto_save = time.time()
+    auto_save_interval = user_config.get('sessions', {}).get('auto_save_interval', 300)
 
     print(f"🚀 Loading model {model_name}...")
     try:
@@ -174,7 +188,7 @@ def run_model(
                 return None
 
         # Create command completer and auto-suggest for slash commands
-        commands = ['/exit', '/bye', '/quit', '/help', '/clear', '/status', '/export', '/setting']
+        commands = ['/exit', '/bye', '/quit', '/help', '/clear', '/status', '/export', '/save', '/resume', '/session', '/setting']
         completer = SlashCommandCompleter(commands)
         auto_suggest = SlashCommandAutoSuggest(commands)
 
@@ -192,6 +206,24 @@ def run_model(
 
     while True:
         try:
+            # Auto-save check (every N minutes)
+            if auto_save_interval > 0 and time.time() - last_auto_save >= auto_save_interval:
+                settings_dict = {
+                    'max_tokens': max_tokens,
+                    'stream_mode': stream_mode,
+                    'chat_mode': chat_mode,
+                    'history_mode': history_mode,
+                    'time_limit': time_limit,
+                    'reasoning': reasoning,
+                }
+                session_data = build_session_data(
+                    history, model_name, settings_dict,
+                    session_id, session_name, session_created_at
+                )
+                save_session(session_data)
+                last_auto_save = time.time()
+                # Silent save (don't notify user)
+
             if session:
                 # Create style dynamically to reflect current color settings
                 input_style_str = ansi_to_prompt_toolkit_style(COLORS.get('user_prompt', '\033[1;37m'))
@@ -208,11 +240,39 @@ def run_model(
             print(_colored("\n⚠️  Cancelled. Type '/exit' or '/bye' to quit.", "warning"))
             continue
         except EOFError:
-            # Ctrl+D: Exit
-            print(_colored("\n👋 Bye!", "success"))
+            # Ctrl+D: Save session and exit
+            settings_dict = {
+                'max_tokens': max_tokens,
+                'stream_mode': stream_mode,
+                'chat_mode': chat_mode,
+                'history_mode': history_mode,
+                'time_limit': time_limit,
+                'reasoning': reasoning,
+            }
+            session_data = build_session_data(
+                history, model_name, settings_dict,
+                session_id, session_name, session_created_at
+            )
+            save_session(session_data)
+            print(_colored("\n💾 Session saved", "success"))
+            print(_colored("👋 Bye!", "success"))
             break
         # Handle slash commands
         if user_input.lower() in ["/exit", "/bye", "/quit"]:
+            settings_dict = {
+                'max_tokens': max_tokens,
+                'stream_mode': stream_mode,
+                'chat_mode': chat_mode,
+                'history_mode': history_mode,
+                'time_limit': time_limit,
+                'reasoning': reasoning,
+            }
+            session_data = build_session_data(
+                history, model_name, settings_dict,
+                session_id, session_name, session_created_at
+            )
+            save_session(session_data)
+            print(_colored("💾 Session saved", "success"))
             print(_colored("👋 Bye!", "success"))
             break
 
@@ -258,6 +318,77 @@ def run_model(
                     filename += '.md'
 
             export_conversation(history, filename, format, model_name)
+            continue
+
+        if user_input.lower() == "/save":
+            settings_dict = {
+                'max_tokens': max_tokens,
+                'stream_mode': stream_mode,
+                'chat_mode': chat_mode,
+                'history_mode': history_mode,
+                'time_limit': time_limit,
+                'reasoning': reasoning,
+            }
+            handle_save_command(
+                history, model_name, settings_dict,
+                session_id, session_name, session_created_at
+            )
+            continue
+
+        if user_input.lower() == "/resume":
+            settings_dict = {
+                'max_tokens': max_tokens,
+                'stream_mode': stream_mode,
+                'chat_mode': chat_mode,
+                'history_mode': history_mode,
+                'time_limit': time_limit,
+                'reasoning': reasoning,
+            }
+            restored = handle_resume_command(
+                history, model_name, settings_dict,
+                session_id, session_name, session_created_at
+            )
+            if restored:
+                # Switch to restored session
+                history = restored['history']
+                session_id = restored['session_id']
+                session_name = restored['session_name']
+                session_created_at = restored['created_at']
+                # Restore settings
+                max_tokens = restored['settings']['max_tokens']
+                stream_mode = restored['settings']['stream_mode']
+                chat_mode = restored['settings']['chat_mode']
+                history_mode = restored['settings']['history_mode']
+                time_limit = restored['settings']['time_limit']
+                reasoning = restored['settings']['reasoning']
+            continue
+
+        if user_input.lower() == "/session":
+            settings_dict = {
+                'max_tokens': max_tokens,
+                'stream_mode': stream_mode,
+                'chat_mode': chat_mode,
+                'history_mode': history_mode,
+                'time_limit': time_limit,
+                'reasoning': reasoning,
+            }
+            restored = show_session_menu(
+                history, model_name, settings_dict,
+                session_id, session_name, session_created_at
+            )
+            if restored:
+                # Switch to restored session
+                history = restored['history']
+                session_id = restored['session_id']
+                session_name = restored['session_name']
+                session_created_at = restored['created_at']
+                # Restore settings
+                max_tokens = restored['settings']['max_tokens']
+                stream_mode = restored['settings']['stream_mode']
+                chat_mode = restored['settings']['chat_mode']
+                history_mode = restored['settings']['history_mode']
+                time_limit = restored['settings']['time_limit']
+                reasoning = restored['settings']['reasoning']
             continue
 
         if user_input.lower() == "/setting":
