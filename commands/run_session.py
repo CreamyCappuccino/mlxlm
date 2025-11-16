@@ -6,7 +6,7 @@ Handles session management menu and operations.
 
 from typing import Optional
 
-from core import load_user_config, save_to_config
+from core import load_user_config, save_user_config
 from core.session_utils import (
     get_session_storage_info, update_session_name,
     delete_session, list_sessions
@@ -142,15 +142,15 @@ def edit_autosave_settings() -> None:
 
         if choice == "1":
             config.setdefault('sessions', {})['auto_save_interval'] = 300
-            save_to_config('sessions', config.get('sessions', {}))
+            save_user_config(config)
             print(_colored("✅ Auto-save enabled (5 minutes)", "success"))
         elif choice == "2":
             config.setdefault('sessions', {})['auto_save_interval'] = 600
-            save_to_config('sessions', config.get('sessions', {}))
+            save_user_config(config)
             print(_colored("✅ Auto-save enabled (10 minutes)", "success"))
         elif choice == "3":
             config.setdefault('sessions', {})['auto_save_interval'] = 0
-            save_to_config('sessions', config.get('sessions', {}))
+            save_user_config(config)
             print(_colored("✅ Auto-save disabled", "success"))
         elif choice == "0":
             return
