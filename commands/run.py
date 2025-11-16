@@ -912,6 +912,10 @@ History Mode: {history_mode}
             continue
 
         if not user_input: continue
+
+        # Display user input with color
+        print(_colored(f"💬 You: {user_input}", "user_prompt"))
+
         history.append(("user", user_input))
 
         try:
@@ -988,13 +992,14 @@ History Mode: {history_mode}
 
             if stream_mode == "off":
                 output = _call_generate_with_stop(full_prompt)
-                print(output, end="\n", flush=True)
+                print(_colored(output, "model_output"), end="\n", flush=True)
                 if remember_assistant:
                     history.append(("assistant", output))
 
             elif stream_mode == "final":
                 # Stream only the <|channel|>final content in real time
                 _buf = [] if remember_assistant else None
+                print(COLORS['model_output'], end='', flush=True)  # Apply color
                 try:
                     token_iter_resp = stream_generate(
                         model, tokenizer, full_prompt, max_tokens=max_tokens, stop=stop_seqs
@@ -1020,6 +1025,7 @@ History Mode: {history_mode}
                                 print("\n⏱️ Time limit reached, stopping.\n", flush=True); break
                     else:
                         raise
+                print(COLORS['reset'], end='', flush=True)  # Reset color
                 print("\n")
                 if _buf is not None: history.append(("assistant","".join(_buf)))
 
@@ -1037,6 +1043,7 @@ History Mode: {history_mode}
                         stream_it = stream_generate(model, tokenizer, full_prompt, max_tokens=max_tokens)
                     else:
                         raise
+                print(COLORS['model_output'], end='', flush=True)  # Apply color
                 try:
                     for resp in stream_it:
                         if _buf is not None: _buf.append(resp.text)
@@ -1061,6 +1068,7 @@ History Mode: {history_mode}
                                 print("\n⏱️ Time limit reached, stopping.\n", flush=True); break
                     else:
                         raise
+                print(COLORS['reset'], end='', flush=True)  # Reset color
                 print("\n")
                 if _buf is not None: history.append(("assistant","".join(_buf)))
         except KeyboardInterrupt:
