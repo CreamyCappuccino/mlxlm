@@ -12,7 +12,8 @@ from huggingface_hub import HfApi
 
 # ===== Alias/Paths =====
 HF_CACHE_PATH = os.path.expanduser("~/.cache/huggingface/hub")
-alias_file_path = os.path.join(os.path.dirname(__file__), ".mlxlm_aliases.json")
+# Project root is parent directory of core/
+alias_file_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".mlxlm_aliases.json")
 
 def load_alias_dict() -> dict:
     try:
@@ -40,11 +41,8 @@ def resolve_model_name(name_or_alias: str, alias_dict: dict) -> str:
         if resolved.lower().startswith("models--"):
             return resolved.replace("models--", "", 1).replace("--", "/")
         return resolved
-    if "/" not in name_or_alias and name_or_alias.count("-") >= 2 and not name_or_alias.startswith("models--"):
-        parts = name_or_alias.split("-", 2)
-        org = f"{parts[0]}-{parts[1]}"
-        repo = parts[2]
-        return f"{org}/{repo}"
+    # Removed auto-conversion of hyphenated names (e.g., gpt-oss-20b -> gpt-oss/20b)
+    # This was causing incorrect model resolution. User input should be passed as-is.
     model_names_lower = {full_name.lower(): full_name for full_name in alias_dict.keys()}
     if user_input in model_names_lower:
         return model_names_lower[user_input]
