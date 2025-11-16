@@ -241,7 +241,7 @@ def show_settings_menu(config: dict) -> dict:
 
 1. 💬 Default Behavior Settings
 2. 🎨 Color Settings
-3. 📚 History Settings
+3. 📚 User Prompt History
 4. 💾 Export Settings
 5. 🔙 Back
 
@@ -470,6 +470,17 @@ Select (1-8): """, end='')
             current_desc = get_color_description(current_code)
 
             print(f"\nCurrent: {current_code}{current_desc}\033[0m")
+            print("""
+📚 Basic 16 Colors Reference:
+  30: \033[30mBlack\033[0m           90: \033[90mBright Black (Gray)\033[0m
+  31: \033[31mRed\033[0m             91: \033[91mBright Red\033[0m
+  32: \033[32mGreen\033[0m           92: \033[92mBright Green\033[0m
+  33: \033[33mYellow\033[0m          93: \033[93mBright Yellow\033[0m
+  34: \033[34mBlue\033[0m            94: \033[94mBright Blue\033[0m
+  35: \033[35mMagenta\033[0m         95: \033[95mBright Magenta\033[0m
+  36: \033[36mCyan\033[0m            96: \033[96mBright Cyan\033[0m
+  37: \033[37mWhite\033[0m           97: \033[97mBright White\033[0m
+""")
             print("Enter color (30-37 or 90-97 for basic colors, #RRGGBB for RGB, or R,G,B): ", end='')
 
             try:
@@ -519,11 +530,11 @@ Select (1-8): """, end='')
 
 
 def edit_history(config: dict) -> dict:
-    """Edit history settings."""
+    """Edit user prompt history settings."""
     while True:
         hist = config['history']
         print(f"""
-📚 History Settings:
+📚 User Prompt History Settings:
 
 1. Max Entries: {hist['max_entries']}
 2. Max Age (days): {hist['max_age_days'] or 'Unlimited'}

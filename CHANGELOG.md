@@ -32,11 +32,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - **Color Settings** (fully implemented):
       - 5 preset themes: Default, Nord, Dracula, Monokai, Solarized
       - Custom theme creation with live color previews
-      - Support for 16-color codes (30-37, 90-97)
+      - Support for 16-color codes (30-37, 90-97) with reference table
+      - 16-color reference table displayed when customizing colors (2-column layout with color previews)
       - Support for RGB hex (#RRGGBB) and comma-separated (R,G,B)
       - Real-time color preview for each element
       - Save custom themes to config
-    - History Settings (max entries, max age in days)
+    - User Prompt History (max entries, max age in days)
     - Export Settings (default format, timestamp inclusion, auto-save on exit)
 
 - **Color customization infrastructure**
@@ -57,10 +58,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Startup message updated to mention `/help` for command list
 - Command completer and auto-suggest now include all new slash commands
 - All configuration values now customizable through `/setting` menu
+- **Color themes now apply to actual conversation content**, not just prompt labels:
+  - User input content displays in `user_prompt` color
+  - AI output content displays in `model_output` color (all stream modes)
+  - Previously only the "📝 Prompt:" label was colored
 
 ### Fixed
 - Input validation for all settings with helpful error messages
 - Safe Ctrl+C / Ctrl+D handling in all interactive menus
+- Duplicate `os` import that caused `UnboundLocalError` at startup
+- Color application now works correctly for all conversation content
 
 ## [0.2.5] - 2025-11-15
 
