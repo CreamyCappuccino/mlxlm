@@ -44,6 +44,9 @@ from core import (
 # Import utilities and settings
 from .run_utils import _colored, COLORS, ansi_to_prompt_toolkit_style
 from .run_export import export_conversation
+from .run_help import handle_help_command
+from .run_clear import handle_clear_command
+from .run_status import handle_status_command
 from .settings import show_settings_menu
 
 def run_model(
@@ -216,100 +219,19 @@ def run_model(
             break
 
         if user_input.lower() == "/help":
-            help_text = """
-📖 MLX-LM Interactive Commands:
-
-Commands:
-  /exit, /bye, /quit  - Exit the chat
-  /help               - Show this help message
-  /clear              - Clear conversation history (with options)
-  /status             - Show current session status
-  /export [filename]  - Export conversation (md/txt/json)
-  /setting            - Open settings menu
-
-Keyboard Shortcuts:
-  Ctrl+C              - Interrupt model generation
-  Ctrl+D              - Exit (EOF)
-  Ctrl+P / Ctrl+N     - Navigate history (previous/next)
-  Ctrl+R / Ctrl+A     - Move to beginning of line
-  Ctrl+O / Ctrl+E     - Move to end of line
-  Ctrl+J              - Insert newline
-  Option+Enter        - Insert newline (Mac/Linux)
-  Tab                 - Show command completions
-  → or Ctrl+E         - Accept inline suggestion
-"""
-            print(_colored(help_text, "system"))
+            handle_help_command()
             continue
 
         if user_input.lower() == "/clear":
-            print("""
-Clear options:
-1. Clear conversation only (keep screen)
-2. Clear screen only (keep conversation history)
-3. Clear both
-4. Cancel
-
-Select (1-4) [4]: """, end='')
-            try:
-                choice = input().strip()
-            except (KeyboardInterrupt, EOFError):
-                print()
-                choice = '4'
-
-            if choice == '1':
-                history.clear()
-                print(_colored("✅ Conversation history cleared (screen unchanged)", "success"))
-            elif choice == '2':
-                os.system('clear' if os.name != 'nt' else 'cls')
-                print(_colored("✅ Screen cleared (conversation history preserved)", "success"))
-            elif choice == '3':
-                history.clear()
-                os.system('clear' if os.name != 'nt' else 'cls')
-                print("=" * 60)
-                print(_colored("🧹 Everything cleared! Starting fresh...", "success"))
-                print("=" * 60)
-            else:
-                print(_colored("❌ Cancelled", "warning"))
+            handle_clear_command(history)
             continue
 
         if user_input.lower() == "/status":
-            # Calculate statistics
-            user_count = sum(1 for r, _ in history if r == "user")
-            assistant_count = sum(1 for r, _ in history if r == "assistant")
-
-            # Calculate current token usage
-            try:
-                full_prompt = _render_prompt(chat_mode, tokenizer, sys_prompt, history)
-                current_tokens = _count_tokens(tokenizer, full_prompt)
-            except Exception:
-                current_tokens = 0
-
-            # Estimate model's context limit (rough estimate)
-            estimated_limit = 8192  # Default rough estimate
-
-            status_text = f"""
-📊 Current Status:
-
-Model: {model_name}
-Chat Mode: {chat_mode}
-History Mode: {history_mode}
-
-💬 Conversation:
-  User messages: {user_count}
-  Assistant messages: {assistant_count}
-  Total turns: {len(history)}
-
-🧮 Token Usage:
-  Current context: ~{current_tokens} tokens
-  Max tokens per response: {max_tokens}
-  Estimated limit: ~{estimated_limit} tokens (model dependent)
-  Usage: {(current_tokens / estimated_limit * 100):.1f}%
-
-⚙️  Settings:
-  Stream mode: {stream_mode}
-  Time limit: {time_limit or 'none'} sec
-"""
-            print(_colored(status_text, "system"))
+            handle_status_command(
+                history, model_name, chat_mode, history_mode, stream_mode,
+                max_tokens, time_limit, tokenizer, sys_prompt,
+                _render_prompt, _count_tokens
+            )
             continue
 
         if user_input.lower().startswith("/export"):
