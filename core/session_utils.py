@@ -47,7 +47,8 @@ def build_session_data(
     Build session data dictionary.
 
     Args:
-        history: List of (user_message, assistant_response) tuples
+        history: List of (role, message) tuples in Harmony format
+                 e.g., [("user", "hi"), ("assistant", "hello"), ...]
         model_name: Name of the model used
         settings: Session settings dictionary
         session_id: Unique session identifier
@@ -59,6 +60,23 @@ def build_session_data(
     """
     now = datetime.now().isoformat()
 
+    # Convert Harmony format [("user", msg), ("assistant", resp), ...]
+    # to pair format [(msg, resp), ...]
+    paired_history = []
+    i = 0
+    while i < len(history):
+        if i + 1 < len(history):
+            role1, msg1 = history[i]
+            role2, msg2 = history[i + 1]
+            if role1 == "user" and role2 == "assistant":
+                paired_history.append((msg1, msg2))
+                i += 2
+            else:
+                # Skip malformed entries
+                i += 1
+        else:
+            i += 1
+
     return {
         "session_id": session_id,
         "created_at": created_at or now,
@@ -66,8 +84,8 @@ def build_session_data(
         "session_name": session_name,
         "model_name": model_name,
         "settings": settings,
-        "history": history,
-        "message_count": len(history),
+        "history": paired_history,
+        "message_count": len(paired_history),
         "archived": False
     }
 
