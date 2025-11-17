@@ -360,6 +360,16 @@ def run_model(
                 history_mode = restored['settings']['history_mode']
                 time_limit = restored['settings']['time_limit']
                 reasoning = restored['settings']['reasoning']
+
+                # Display restored conversation history
+                if history:
+                    print(_colored("\n📜 Restored conversation history:", "system"))
+                    print("=" * 60)
+                    for user_msg, ai_msg in history:
+                        print(_colored(f"💬 User: {user_msg}", "user_prompt"))
+                        print(_colored(f"🤖 AI: {ai_msg}", "model_output"))
+                        print()
+                    print("=" * 60)
             continue
 
         if user_input.lower() == "/session":
@@ -388,6 +398,16 @@ def run_model(
                 history_mode = restored['settings']['history_mode']
                 time_limit = restored['settings']['time_limit']
                 reasoning = restored['settings']['reasoning']
+
+                # Display restored conversation history
+                if history:
+                    print(_colored("\n📜 Restored conversation history:", "system"))
+                    print("=" * 60)
+                    for user_msg, ai_msg in history:
+                        print(_colored(f"💬 User: {user_msg}", "user_prompt"))
+                        print(_colored(f"🤖 AI: {ai_msg}", "model_output"))
+                        print()
+                    print("=" * 60)
             continue
 
         if user_input.lower() == "/setting":
