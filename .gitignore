@@ -74,3 +74,6 @@ backup/
 # Release workflow (Cloud session notes, not part of release)
 RELEASE_NOTES_*.md
 TAG_*.md
+
+# Design memos and documentation (not part of release)
+DesignMemo/
