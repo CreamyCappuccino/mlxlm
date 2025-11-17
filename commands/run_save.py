@@ -32,11 +32,17 @@ def handle_save_command(
         history, model_name, settings, session_id, session_name, created_at
     )
 
+    # Only save if there are actual completed message pairs
+    msg_count = session_data['message_count']
+
+    if msg_count == 0:
+        print(_colored("⚠️  No messages to save (empty session)", "warning"))
+        return
+
     # Save to file
     save_session(session_data)
 
     # Display success message
-    msg_count = session_data['message_count']
     updated_time = session_data['updated_at'][:16].replace('T', ' ')
 
     print(_colored(f"💾 Session saved: {session_id}", "success"))

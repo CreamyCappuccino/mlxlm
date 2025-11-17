@@ -224,7 +224,9 @@ def run_model(
                     history, model_name, settings_dict,
                     session_id, session_name, session_created_at
                 )
-                save_session(session_data)
+                # Only auto-save if session has messages
+                if session_data['message_count'] > 0:
+                    save_session(session_data)
                 last_auto_save = time.time()
                 # Silent save (don't notify user)
 
@@ -244,7 +246,7 @@ def run_model(
             print(_colored("\n⚠️  Cancelled. Type '/exit' or '/bye' to quit.", "warning"))
             continue
         except EOFError:
-            # Ctrl+D: Save session and exit
+            # Ctrl+D: Save session and exit (only if has messages)
             settings_dict = {
                 'max_tokens': max_tokens,
                 'stream_mode': stream_mode,
@@ -257,8 +259,9 @@ def run_model(
                 history, model_name, settings_dict,
                 session_id, session_name, session_created_at
             )
-            save_session(session_data)
-            print(_colored("\n💾 Session saved", "success"))
+            if session_data['message_count'] > 0:
+                save_session(session_data)
+                print(_colored("\n💾 Session saved", "success"))
             print(_colored("👋 Bye!", "success"))
             break
         # Handle slash commands
@@ -275,8 +278,9 @@ def run_model(
                 history, model_name, settings_dict,
                 session_id, session_name, session_created_at
             )
-            save_session(session_data)
-            print(_colored("💾 Session saved", "success"))
+            if session_data['message_count'] > 0:
+                save_session(session_data)
+                print(_colored("💾 Session saved", "success"))
             print(_colored("👋 Bye!", "success"))
             break
 
