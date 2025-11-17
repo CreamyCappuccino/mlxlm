@@ -40,10 +40,13 @@ def handle_new_command(
         - settings: Same settings as current session
     """
     # Save current session if it has messages
-    if history:
-        session_data = build_session_data(
-            history, model_name, settings, session_id, session_name, created_at
-        )
+    # Build session data first to check actual message count (paired messages)
+    session_data = build_session_data(
+        history, model_name, settings, session_id, session_name, created_at
+    )
+
+    # Only save if there are actual completed message pairs
+    if session_data['message_count'] > 0:
         save_session(session_data)
         print(_colored("💾 Current session saved", "success"))
 

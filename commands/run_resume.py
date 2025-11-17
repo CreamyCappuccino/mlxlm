@@ -132,8 +132,7 @@ def handle_resume_command(
         print(_colored("Cancelled", "system"))
         return None
 
-    # Save current session before switching
-    print(_colored("💾 Saving current session...", "system"))
+    # Save current session before switching (only if it has messages)
     current_session_data = build_session_data(
         current_history,
         current_model,
@@ -142,8 +141,11 @@ def handle_resume_command(
         current_session_name,
         created_at
     )
-    save_session(current_session_data)
-    print(_colored("✅ Current session saved", "success"))
+
+    if current_session_data['message_count'] > 0:
+        print(_colored("💾 Saving current session...", "system"))
+        save_session(current_session_data)
+        print(_colored("✅ Current session saved", "success"))
 
     # Display success message for loaded session
     print(_colored("📂 Loading session...", "system"))
