@@ -59,7 +59,7 @@ History Mode: {history_mode}
 💬 Conversation:
   User messages: {user_count}
   Assistant messages: {assistant_count}
-  Total turns: {len(history)}
+  Total turns: {user_count}
 
 🧮 Token Usage:
   Current context: ~{current_tokens} tokens

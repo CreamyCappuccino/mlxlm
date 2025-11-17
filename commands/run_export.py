@@ -28,7 +28,7 @@ def export_conversation(history: list[tuple[str, str]], filename: str, format: s
             content = f"# MLX-LM Chat Export\n"
             content += f"**Model**: {model_name}\n"
             content += f"**Date**: {timestamp}\n"
-            content += f"**Total Turns**: {len(history)}\n\n"
+            content += f"**Total Turns**: {len(history) // 2}\n\n"
             content += "---\n\n"
 
             for role, message in history:
@@ -42,7 +42,7 @@ def export_conversation(history: list[tuple[str, str]], filename: str, format: s
             content = f"MLX-LM Chat Export\n"
             content += f"Model: {model_name}\n"
             content += f"Date: {timestamp}\n"
-            content += f"Total Turns: {len(history)}\n\n"
+            content += f"Total Turns: {len(history) // 2}\n\n"
             content += "=" * 80 + "\n\n"
 
             for role, message in history:
@@ -57,7 +57,7 @@ def export_conversation(history: list[tuple[str, str]], filename: str, format: s
             data = {
                 "model": model_name,
                 "export_date": timestamp,
-                "total_turns": len(history),
+                "total_turns": len(history) // 2,
                 "conversation": [
                     {"role": role, "content": message}
                     for role, message in history

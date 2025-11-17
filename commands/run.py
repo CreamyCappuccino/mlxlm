@@ -49,11 +49,12 @@ from .run_clear import handle_clear_command
 from .run_status import handle_status_command
 from .run_save import handle_save_command
 from .run_resume import handle_resume_command
+from .run_new import handle_new_command
 from .run_session import show_session_menu
 from .settings import show_settings_menu
 
 # Import session utilities
-from core.session_utils import create_session_id, build_session_data, save_session
+from core.session_utils import create_session_id, build_session_data, save_session, cleanup_empty_sessions
 from datetime import datetime
 
 def run_model(
@@ -101,6 +102,9 @@ def run_model(
     session_created_at = datetime.now().isoformat()
     last_auto_save = time.time()
     auto_save_interval = user_config.get('sessions', {}).get('auto_save_interval', 300)
+
+    # Clean up old empty sessions (keep only newest)
+    cleanup_empty_sessions()
 
     print(f"🚀 Loading model {model_name}...")
     try:
@@ -188,7 +192,7 @@ def run_model(
                 return None
 
         # Create command completer and auto-suggest for slash commands
-        commands = ['/exit', '/bye', '/quit', '/help', '/clear', '/status', '/export', '/save', '/resume', '/session', '/setting']
+        commands = ['/exit', '/bye', '/quit', '/help', '/clear', '/status', '/export', '/save', '/resume', '/new', '/session', '/setting']
         completer = SlashCommandCompleter(commands)
         auto_suggest = SlashCommandAutoSuggest(commands)
 
@@ -377,6 +381,26 @@ def run_model(
                         print(_colored(f"🤖 AI: {ai_msg}", "model_output"))
                         print()
                     print("=" * 60)
+            continue
+
+        if user_input.lower() == "/new":
+            settings_dict = {
+                'max_tokens': max_tokens,
+                'stream_mode': stream_mode,
+                'chat_mode': chat_mode,
+                'history_mode': history_mode,
+                'time_limit': time_limit,
+                'reasoning': reasoning,
+            }
+            new_session = handle_new_command(
+                history, model_name, settings_dict,
+                session_id, session_name, session_created_at
+            )
+            # Switch to new session
+            session_id = new_session['session_id']
+            session_name = new_session['session_name']
+            session_created_at = new_session['created_at']
+            history = []
             continue
 
         if user_input.lower() == "/session":
