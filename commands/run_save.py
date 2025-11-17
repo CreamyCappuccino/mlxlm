@@ -36,7 +36,7 @@ def handle_save_command(
     save_session(session_data)
 
     # Display success message
-    msg_count = len(history)
+    msg_count = session_data['message_count']
     updated_time = session_data['updated_at'][:16].replace('T', ' ')
 
     print(_colored(f"💾 Session saved: {session_id}", "success"))

@@ -179,6 +179,31 @@ def delete_session(session_id: str) -> None:
         filepath.unlink()
 
 
+def cleanup_empty_sessions() -> None:
+    """
+    Delete old empty sessions, keeping only the newest one.
+
+    This function is called at startup to prevent accumulation of
+    empty sessions from multiple runs. Keeps the newest empty session
+    (the current one) and deletes all older ones.
+    """
+    sessions = list_sessions()
+
+    # Find all empty sessions (0 messages)
+    empty_sessions = [s for s in sessions if s.get('message_count', 0) == 0]
+
+    if len(empty_sessions) <= 1:
+        # 0 or 1 empty session, nothing to clean up
+        return
+
+    # Sort by created_at (newest first)
+    empty_sessions.sort(key=lambda s: s.get('created_at', ''), reverse=True)
+
+    # Delete all except the newest one
+    for old_session in empty_sessions[1:]:
+        delete_session(old_session['session_id'])
+
+
 def update_session_name(session_id: str, name: str) -> None:
     """
     Update session name.

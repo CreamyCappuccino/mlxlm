@@ -13,6 +13,7 @@ from core.session_utils import (
 )
 from .run_utils import _colored
 from .run_resume import handle_resume_command, format_session_preview
+from .run_new import handle_new_command
 
 
 def rename_current_session(session_id: str, current_name: str) -> str:
@@ -54,6 +55,78 @@ def rename_current_session(session_id: str, current_name: str) -> str:
         print()
         print(_colored("Cancelled", "system"))
         return current_name
+
+
+def rename_sessions_ui() -> None:
+    """
+    Display session renaming UI with selection.
+
+    Allows user to select and rename any saved session.
+    Can rename multiple sessions consecutively.
+    """
+    while True:
+        sessions = list_sessions()
+
+        if not sessions:
+            print(_colored("📂 No saved sessions to rename", "warning"))
+            return
+
+        # Display header
+        print("\n" + "="*60)
+        print(_colored("✏️  Rename Sessions", "system"))
+        print("="*60)
+
+        # Display sessions
+        for i, session in enumerate(sessions, 1):
+            print(format_session_preview(session, i))
+            if i < len(sessions):
+                print()
+
+        # Display footer
+        print("="*60)
+        print(" 0. Back")
+        print()
+
+        # Get user choice
+        try:
+            choice = input(_colored(f"Select session to rename (0-{len(sessions)}): ", "user_prompt")).strip()
+
+            if not choice:
+                continue
+
+            choice_num = int(choice)
+
+            if choice_num == 0:
+                return  # Back to menu
+            elif 1 <= choice_num <= len(sessions):
+                selected_session = sessions[choice_num - 1]
+                session_id = selected_session['session_id']
+                current_name = selected_session['session_name']
+
+                # Display current name
+                display_name = current_name if current_name else "[No name]"
+                print(f"\nCurrent name: {display_name}")
+
+                # Get new name
+                new_name = input(_colored("Enter new name (or leave blank to clear): ", "user_prompt")).strip()
+
+                # Update session name
+                update_session_name(session_id, new_name)
+
+                if new_name:
+                    print(_colored(f'✅ Session renamed to "{new_name}"', "success"))
+                else:
+                    print(_colored("✅ Session name cleared", "success"))
+
+                # Continue loop to allow renaming more sessions
+            else:
+                print(_colored(f"⚠️  Please enter a number between 0 and {len(sessions)}", "warning"))
+        except ValueError:
+            print(_colored("⚠️  Please enter a valid number", "warning"))
+        except (KeyboardInterrupt, EOFError):
+            print()
+            print(_colored("Cancelled", "system"))
+            return
 
 
 def delete_sessions_ui() -> None:
@@ -206,15 +279,16 @@ def show_session_menu(
         print()
         print("="*60)
         print(" 1. Resume Session")
-        print(" 2. Rename Current Session")
+        print(" 2. Rename Sessions")
         print(" 3. Delete Sessions")
         print(" 4. Auto-save Settings")
+        print(" 5. New Session")
         print("="*60)
         print(" 0. Back")
         print()
 
         try:
-            choice = input(_colored("Select option (0-4): ", "user_prompt")).strip()
+            choice = input(_colored("Select option (0-5): ", "user_prompt")).strip()
 
             if choice == "1":
                 # Resume Session
@@ -226,10 +300,8 @@ def show_session_menu(
                     return restored  # Session switch
 
             elif choice == "2":
-                # Rename Current Session
-                new_name = rename_current_session(current_session_id, current_session_name)
-                # Update local variable (caller should handle this)
-                current_session_name = new_name
+                # Rename Sessions
+                rename_sessions_ui()
 
             elif choice == "3":
                 # Delete Sessions
@@ -238,6 +310,14 @@ def show_session_menu(
             elif choice == "4":
                 # Auto-save Settings
                 edit_autosave_settings()
+
+            elif choice == "5":
+                # New Session
+                new_session = handle_new_command(
+                    current_history, current_model, current_settings,
+                    current_session_id, current_session_name, created_at
+                )
+                return new_session  # Session switch to new session
 
             elif choice == "0":
                 return None
