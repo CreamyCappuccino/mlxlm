@@ -349,7 +349,7 @@ def run_model(
             )
             if restored:
                 # Switch to restored session
-                history = restored['history']
+                paired_history = restored['history']
                 session_id = restored['session_id']
                 session_name = restored['session_name']
                 session_created_at = restored['created_at']
@@ -360,6 +360,23 @@ def run_model(
                 history_mode = restored['settings']['history_mode']
                 time_limit = restored['settings']['time_limit']
                 reasoning = restored['settings']['reasoning']
+
+                # Convert pair format [(msg, resp), ...] to Harmony format
+                # [("user", msg), ("assistant", resp), ...]
+                history = []
+                for user_msg, ai_msg in paired_history:
+                    history.append(("user", user_msg))
+                    history.append(("assistant", ai_msg))
+
+                # Display restored conversation history
+                if paired_history:
+                    print(_colored("\n📜 Restored conversation history:", "system"))
+                    print("=" * 60)
+                    for user_msg, ai_msg in paired_history:
+                        print(_colored(f"💬 User: {user_msg}", "user_prompt"))
+                        print(_colored(f"🤖 AI: {ai_msg}", "model_output"))
+                        print()
+                    print("=" * 60)
             continue
 
         if user_input.lower() == "/session":
@@ -377,7 +394,7 @@ def run_model(
             )
             if restored:
                 # Switch to restored session
-                history = restored['history']
+                paired_history = restored['history']
                 session_id = restored['session_id']
                 session_name = restored['session_name']
                 session_created_at = restored['created_at']
@@ -388,6 +405,23 @@ def run_model(
                 history_mode = restored['settings']['history_mode']
                 time_limit = restored['settings']['time_limit']
                 reasoning = restored['settings']['reasoning']
+
+                # Convert pair format [(msg, resp), ...] to Harmony format
+                # [("user", msg), ("assistant", resp), ...]
+                history = []
+                for user_msg, ai_msg in paired_history:
+                    history.append(("user", user_msg))
+                    history.append(("assistant", ai_msg))
+
+                # Display restored conversation history
+                if paired_history:
+                    print(_colored("\n📜 Restored conversation history:", "system"))
+                    print("=" * 60)
+                    for user_msg, ai_msg in paired_history:
+                        print(_colored(f"💬 User: {user_msg}", "user_prompt"))
+                        print(_colored(f"🤖 AI: {ai_msg}", "model_output"))
+                        print()
+                    print("=" * 60)
             continue
 
         if user_input.lower() == "/setting":
