@@ -11,7 +11,7 @@ __version__ = "0.2.5"
 import sys
 from cli_flags import build_parser
 from core import load_alias_dict, resolve_model_name, _preflight_and_maybe_adjust_chat
-from commands import list_models, show_info, pull_model, remove_models, cmd_doctor, run_model
+from commands import list_models, show_info, pull_model, remove_models, cmd_doctor, run_model, search_main
 
 def main() -> None:
     parser = build_parser()
@@ -60,6 +60,19 @@ def main() -> None:
         else:
             # No subcommand = interactive mode
             alias_main([])
+        return
+    if args.command == "search":
+        search_main(
+            args.query,
+            tags=getattr(args, "tags", None),
+            max_size=getattr(args, "max_size", None),
+            min_downloads=getattr(args, "min_downloads", None),
+            updated_within=getattr(args, "updated_within", None),
+            sort=getattr(args, "sort", "downloads"),
+            limit=getattr(args, "limit", 7),
+            no_interactive=getattr(args, "no_interactive", False),
+            json_output=getattr(args, "json", False),
+        )
         return
     if args.command == "run":
         alias_dict = load_alias_dict()

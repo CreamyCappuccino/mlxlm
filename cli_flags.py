@@ -59,6 +59,17 @@ def build_parser() -> argparse.ArgumentParser:
     remove_parser = alias_subparsers.add_parser("remove", help="Remove alias (set to empty)")
     remove_parser.add_argument("alias", help="Alias name to remove")
 
+    search_parser = subparsers.add_parser("search", help="Search HuggingFace for models")
+    search_parser.add_argument("query", help="Search query (e.g., 'llama', 'mistral')")
+    search_parser.add_argument("--filter-tag", action="append", dest="tags", help="Filter by tag (can be repeated)")
+    search_parser.add_argument("--max-size", type=int, help="Maximum model size in GB")
+    search_parser.add_argument("--min-downloads", type=int, help="Minimum download count")
+    search_parser.add_argument("--updated-within", type=int, help="Updated within X days")
+    search_parser.add_argument("--sort", choices=["downloads", "updated", "size"], default="downloads", help="Sort order")
+    search_parser.add_argument("--limit", type=int, default=7, help="Results per page")
+    search_parser.add_argument("--no-interactive", action="store_true", help="Non-interactive mode (show results only)")
+    search_parser.add_argument("--json", action="store_true", help="Output as JSON")
+
     subparsers.add_parser("doctor", help="Diagnose environment (MLX/Harmony/HF cache)")
     subparsers.add_parser("help", help="Show this help message and exit")
     return parser
