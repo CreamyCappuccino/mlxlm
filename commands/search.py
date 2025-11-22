@@ -138,8 +138,18 @@ def format_updated(updated_at: Optional[str]) -> str:
         return "N/A"
 
     try:
+        # Parse timestamp with timezone info
         updated = datetime.fromisoformat(updated_at.replace("Z", "+00:00"))
-        now = datetime.now(updated.tzinfo)
+
+        # Use UTC for consistent timezone handling
+        if updated.tzinfo is None:
+            # If no timezone info, assume UTC
+            from datetime import timezone
+            updated = updated.replace(tzinfo=timezone.utc)
+            now = datetime.now(timezone.utc)
+        else:
+            now = datetime.now(updated.tzinfo)
+
         delta = now - updated
 
         if delta.days == 0:
@@ -211,7 +221,15 @@ def search_huggingface(query: str, state: SearchState) -> list[dict]:
             if state.updated_within_days and model.lastModified:
                 try:
                     updated = datetime.fromisoformat(str(model.lastModified).replace("Z", "+00:00"))
-                    cutoff = datetime.now(updated.tzinfo) - timedelta(days=state.updated_within_days)
+
+                    # Use UTC for consistent timezone handling
+                    from datetime import timezone
+                    if updated.tzinfo is None:
+                        updated = updated.replace(tzinfo=timezone.utc)
+                        cutoff = datetime.now(timezone.utc) - timedelta(days=state.updated_within_days)
+                    else:
+                        cutoff = datetime.now(updated.tzinfo) - timedelta(days=state.updated_within_days)
+
                     if updated < cutoff:
                         continue
                 except Exception:
@@ -373,7 +391,8 @@ def search_interactive(query: str, state: SearchState, models: list) -> None:
             start_idx = state.page * state.results_per_page
             end_idx = start_idx + state.results_per_page
 
-            if end_idx >= len(models):
+            # Check if we're already at the last page
+            if start_idx + state.results_per_page >= len(models):
                 print("\n❗ No more results.")
                 continue
 
