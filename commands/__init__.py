@@ -10,6 +10,7 @@ from .remove import remove_models
 from .doctor import cmd_doctor
 from .run import run_model
 from .alias import alias_main, alias_interactive, _list_cached_models_all, _sync_alias_from_cache
+from .search import search_main
 
 __all__ = [
     'list_models',
@@ -22,4 +23,5 @@ __all__ = [
     'alias_interactive',
     '_list_cached_models_all',
     '_sync_alias_from_cache',
+    'search_main',
 ]
