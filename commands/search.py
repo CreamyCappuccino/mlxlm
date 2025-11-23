@@ -823,12 +823,7 @@ def search_main(
     # Perform search
     models = search_huggingface(query, state)
 
-    # Non-interactive mode
-    if no_interactive:
-        display_non_interactive(models, state)
-        return
-
-    # JSON output mode
+    # JSON output mode (highest priority)
     if json_output:
         import json as json_module
         output = {
@@ -853,6 +848,11 @@ def search_main(
             ]
         }
         print(json_module.dumps(output, indent=2))
+        return
+
+    # Non-interactive mode
+    if no_interactive:
+        display_non_interactive(models, state)
         return
 
     # Interactive mode
