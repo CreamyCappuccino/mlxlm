@@ -187,11 +187,19 @@ def search_huggingface(query: str, state: SearchState) -> list[dict]:
     try:
         api = HfApi()
 
+        # Map internal sort values to HF API sort values
+        sort_mapping = {
+            "downloads": "downloads",
+            "updated": "lastModified",
+            "size": "downloads",  # Size sorting done client-side
+        }
+        hf_sort = sort_mapping.get(state.sort_by, "downloads")
+
         # Build search parameters
         search_params = {
             "search": query,
             "task": "text-generation",
-            "sort": state.sort_by,
+            "sort": hf_sort,
             "direction": -1,  # Descending
             "limit": 100,  # Get more for filtering
             "expand": ["lastModified", "safetensors"],  # Request expandable fields
@@ -237,6 +245,12 @@ def search_huggingface(query: str, state: SearchState) -> list[dict]:
                     pass
 
             filtered_models.append(model)
+
+        # Client-side sorting for "size" (HF API doesn't support it)
+        if state.sort_by == "size":
+            filtered_models.sort(
+                key=lambda m: m.safetensors.get("total", float('inf')) if m.safetensors else float('inf')
+            )
 
         return filtered_models
 
