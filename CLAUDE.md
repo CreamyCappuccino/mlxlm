@@ -263,11 +263,11 @@ When integrating external libraries (e.g., prompt-toolkit, MLX), follow these pr
 
 ---
 
-## 🔗 Related Files
+## 🔗 Repository & Documentation
+- **GitHub Repository**: https://github.com/CreamyCappuccino/mlxlm
 - `README.md`: Project overview
 - `USAGE.md`: User documentation
 - `CONTRIBUTING.md`: Contribution guidelines
-- `RELEASE_NOTES_v0.2.0.md`: Release documentation
 
 ---
 
