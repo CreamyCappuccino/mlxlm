@@ -300,9 +300,21 @@ def display_results(models: list, state: SearchState) -> None:
 
         # Format with color
         model_display = f"{color}{repo_id}{Colors.RESET}"
-        # Account for ANSI color codes in padding
-        padding = 50 - len(repo_id)
-        print(f" {i}  {model_display}{' ' * padding} {size:<10} {downloads:<12} {updated}")
+
+        # If model name is too long, use 2-line display
+        MAX_NAME_WIDTH = 50
+        if len(repo_id) > MAX_NAME_WIDTH:
+            # Line 1: Number + Model name only
+            print(f" {i}  {model_display}")
+            # Line 2: Metadata aligned to column positions
+            # Indent = " " + "i" + "  " = 4 chars, then MODEL NAME column (50 chars)
+            indent = " " * (4 + MAX_NAME_WIDTH)
+            print(f"{indent} {size:<10} {downloads:<12} {updated}")
+        else:
+            # Normal single-line display
+            # Account for ANSI color codes in padding
+            padding = MAX_NAME_WIDTH - len(repo_id)
+            print(f" {i}  {model_display}{' ' * padding} {size:<10} {downloads:<12} {updated}")
 
     # Footer
     filter_summary = "Filters: " + (", ".join(state.get_filter_summary()) if state.has_filters() else "none")
