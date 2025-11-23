@@ -194,6 +194,7 @@ def search_huggingface(query: str, state: SearchState) -> list[dict]:
             "sort": state.sort_by,
             "direction": -1,  # Descending
             "limit": 100,  # Get more for filtering
+            "expand": ["lastModified", "safetensors"],  # Request expandable fields
         }
 
         # Add tag filters
