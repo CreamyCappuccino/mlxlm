@@ -72,6 +72,7 @@ def main() -> None:
             limit=getattr(args, "limit", 7),
             no_interactive=getattr(args, "no_interactive", False),
             json_output=getattr(args, "json", False),
+            help_detail=getattr(args, "help_detail", False),
         )
         return
     if args.command == "run":

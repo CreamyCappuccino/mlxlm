@@ -63,32 +63,32 @@ def build_parser() -> argparse.ArgumentParser:
         "search",
         help="Search HuggingFace for models",
         epilog="""
-Examples:
-  mlxlm search llama                              # Interactive search for llama models
-  mlxlm search mistral --filter-tag mlx           # Filter MLX-compatible models
-  mlxlm search qwen --max-size 10 --sort size     # Models under 10GB, sorted by size
-  mlxlm search phi --no-interactive               # Non-interactive text output
-  mlxlm search gemma --json                       # JSON output (for AI/scripts)
+Quick Start:
+  mlxlm search llama                    # Interactive search
+  mlxlm search mistral --filter-tag mlx # Filter MLX models
+  mlxlm search gemma --json             # JSON output for AI/scripts
+
+For detailed options and more examples: mlxlm search <query> --help-detail
         """,
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
-    search_parser.add_argument("query", help="Search query (e.g., 'llama', 'mistral', 'phi-3')")
+    search_parser.add_argument("query", help="Search query (e.g., 'llama', 'mistral')")
     search_parser.add_argument(
         "--filter-tag", action="append", dest="tags",
-        help="Filter by tag (can be repeated). Common tags: mlx, gguf, quantized, 4-bit, 8-bit"
+        help="Filter by tag (can be repeated)"
     )
-    search_parser.add_argument("--max-size", type=int, metavar="GB", help="Maximum model size in GB (e.g., 10)")
+    search_parser.add_argument("--max-size", type=int, metavar="GB", help="Maximum model size in GB")
     search_parser.add_argument(
         "--min-downloads", type=int, metavar="N",
-        help="Minimum download count (e.g., 1000)"
+        help="Minimum download count"
     )
     search_parser.add_argument(
         "--updated-within", type=int, metavar="DAYS",
-        help="Updated within X days (e.g., 7 for last week)"
+        help="Updated within X days"
     )
     search_parser.add_argument(
         "--sort", choices=["downloads", "updated", "size"], default="downloads",
-        help="Sort order (default: downloads)"
+        help="Sort by downloads/updated/size (default: downloads)"
     )
     search_parser.add_argument(
         "--limit", type=int, default=7, metavar="N",
@@ -96,11 +96,15 @@ Examples:
     )
     search_parser.add_argument(
         "--no-interactive", action="store_true",
-        help="Non-interactive mode: display all results as text without menu"
+        help="Non-interactive text output"
     )
     search_parser.add_argument(
         "--json", action="store_true",
-        help="Output as JSON (for AI/scripts). Takes priority over --no-interactive"
+        help="JSON output (for AI/scripts)"
+    )
+    search_parser.add_argument(
+        "--help-detail", action="store_true",
+        help="Show detailed help with all options and examples"
     )
 
     subparsers.add_parser("doctor", help="Diagnose environment (MLX/Harmony/HF cache)")

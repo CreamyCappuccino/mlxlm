@@ -794,8 +794,78 @@ def search_main(
     limit: int = 7,
     no_interactive: bool = False,
     json_output: bool = False,
+    help_detail: bool = False,
 ) -> None:
     """Main entry point for search command."""
+    # Show detailed help if requested
+    if help_detail:
+        print("""
+mlxlm search - Search HuggingFace for text-generation models
+
+USAGE:
+  mlxlm search <query> [options]
+
+ARGUMENTS:
+  query                 Search term (e.g., 'llama', 'mistral', 'phi-3', 'qwen')
+
+COMMON OPTIONS:
+  --filter-tag TAG      Filter by tag (can be repeated for multiple tags)
+                        Common tags: mlx, gguf, quantized, 4-bit, 8-bit, f16, f32
+  --max-size GB         Maximum model size in gigabytes (e.g., 10)
+  --sort TYPE           Sort results by: downloads, updated, size
+                        Default: downloads
+  --json                Output as JSON format (for AI agents and scripts)
+                        Takes priority over --no-interactive
+
+ADVANCED OPTIONS:
+  --min-downloads N     Minimum download count (e.g., 1000, 5000)
+  --updated-within DAYS Filter models updated within X days
+                        Examples: 7 (last week), 30 (last month), 365 (last year)
+  --limit N             Results per page in interactive mode (default: 7)
+  --no-interactive      Non-interactive mode: display all results as plain text
+                        without pagination menu
+
+EXAMPLES:
+  # Basic interactive search
+  mlxlm search llama
+
+  # Filter by MLX compatibility
+  mlxlm search mistral --filter-tag mlx
+
+  # Multiple filters: small MLX models
+  mlxlm search phi --filter-tag mlx --max-size 5
+
+  # Find recently updated quantized models
+  mlxlm search qwen --filter-tag quantized --updated-within 30
+
+  # Sort by size, limit results
+  mlxlm search gemma --sort size --max-size 10
+
+  # JSON output for AI/scripts (non-interactive)
+  mlxlm search llama --json
+
+  # Text output without interactive menu
+  mlxlm search mistral --no-interactive
+
+OUTPUT MODES:
+  1. Interactive (default)   - Menu-driven with pagination (1-7: select, 8: next, 9: filters, 0: exit)
+  2. JSON (--json)            - Structured JSON output for AI agents and scripts
+  3. Non-interactive (--no-interactive) - Plain text list without menu
+
+COLOR CODING (interactive mode):
+  Green  = MLX-compatible models (mlx, mlx-community tags)
+  Yellow = Quantized models (gguf, quantized, 4-bit, 8-bit tags)
+  Blue   = Official models (meta-llama, mistralai, google, microsoft, Qwen tags)
+  White  = Other models
+
+NOTES:
+  - All searches are limited to text-generation task models
+  - Size filter requires safetensors metadata (some models may not have this)
+  - Sort by 'size' is done client-side (may be slower for large result sets)
+  - Tags are case-insensitive and matched partially
+        """)
+        return
+
     if not query:
         print("❌ Search query required.")
         print("\nUsage:")
@@ -803,6 +873,7 @@ def search_main(
         print("\nExample:")
         print("  mlxlm search llama")
         print("  mlxlm search mistral --max-size 10")
+        print("\nFor detailed help: mlxlm search <query> --help-detail")
         sys.exit(1)
 
     # Initialize state
