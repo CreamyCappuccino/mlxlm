@@ -151,7 +151,8 @@ def display_results(models: list, state: SearchState) -> None:
 
     # Footer
     filter_summary = "Filters: " + (", ".join(state.get_filter_summary()) if state.has_filters() else "none")
-    print(f"\n (Showing {showing_start}-{showing_end} of {total_models} | Sorted by: {state.sort_by.capitalize()} | {filter_summary})")
+    direction = "↓" if state.sort_direction == "desc" else "↑"
+    print(f"\n (Showing {showing_start}-{showing_end} of {total_models} | Sorted by: {state.sort_by.capitalize()} {direction} | {filter_summary})")
 
     # Legend
     print(f"\nLegend: [{Colors.GREEN}Green=MLX{Colors.RESET}] [{Colors.YELLOW}Yellow=Quantized{Colors.RESET}] [{Colors.BLUE}Blue=Official{Colors.RESET}]")

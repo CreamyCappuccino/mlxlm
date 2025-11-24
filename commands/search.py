@@ -55,6 +55,7 @@ class SearchState:
     def __init__(self):
         self.query: str = ""
         self.sort_by: str = "downloads"  # downloads, updated, size
+        self.sort_direction: str = "desc"  # desc, asc
         self.max_size_gb: Optional[int] = None
         self.min_downloads: Optional[int] = None
         self.tags: list[str] = []
@@ -179,11 +180,12 @@ def search_huggingface(query: str, state: SearchState) -> list[dict]:
         hf_sort = sort_mapping.get(state.sort_by, "downloads")
 
         # Build search parameters
+        hf_direction = -1 if state.sort_direction == "desc" else 1  # -1=desc, 1=asc
         search_params = {
             "search": query,
             "task": "text-generation",
             "sort": hf_sort,
-            "direction": -1,  # Descending
+            "direction": hf_direction,
             "limit": 100,  # Get more for filtering
             "expand": ["lastModified", "safetensors"],  # Request expandable fields
         }
@@ -234,7 +236,8 @@ def search_huggingface(query: str, state: SearchState) -> list[dict]:
         # Client-side sorting for "size" (HF API doesn't support it)
         if state.sort_by == "size":
             filtered_models.sort(
-                key=lambda m: m.safetensors.get("total", float('inf')) if m.safetensors else float('inf')
+                key=lambda m: m.safetensors.get("total", float('inf')) if m.safetensors else float('inf'),
+                reverse=(state.sort_direction == "desc")
             )
 
         return filtered_models

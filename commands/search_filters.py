@@ -50,11 +50,12 @@ def handle_filters(state: SearchState) -> None:
 
         print("Available options:")
         print("  1  Sort order (downloads/updated/size)")
-        print("  2  Model size (max GB)")
-        print("  3  Minimum downloads")
-        print("  4  Tags (e.g., mlx, quantized, instruct)")
-        print("  5  Last updated (within X days)")
-        print("  6  Clear all filters")
+        print("  2  Sort direction (ascending/descending)")
+        print("  3  Model size (max GB)")
+        print("  4  Minimum downloads")
+        print("  5  Tags (e.g., mlx, quantized, instruct)")
+        print("  6  Last updated (within X days)")
+        print("  7  Clear all filters")
         print("  0  Back to results")
         print("\n💡 Tip: You can type /exit at any time to cancel.\n")
 
@@ -69,28 +70,33 @@ def handle_filters(state: SearchState) -> None:
             handle_sort_menu(state)
             continue
 
-        # Max size
+        # Sort direction
         if choice == "2":
+            handle_sort_direction_menu(state)
+            continue
+
+        # Max size
+        if choice == "3":
             handle_size_filter(state)
             continue
 
         # Min downloads
-        if choice == "3":
+        if choice == "4":
             handle_downloads_filter(state)
             continue
 
         # Tags
-        if choice == "4":
+        if choice == "5":
             handle_tags_filter(state)
             continue
 
         # Updated within
-        if choice == "5":
+        if choice == "6":
             handle_updated_filter(state)
             continue
 
         # Clear all
-        if choice == "6":
+        if choice == "7":
             confirm = input("\nClear all filters? [(y)/n]: ").strip().lower()
             if confirm in ("", "y", "yes"):
                 state.max_size_gb = None
@@ -98,11 +104,12 @@ def handle_filters(state: SearchState) -> None:
                 state.tags = []
                 state.updated_within_days = None
                 state.sort_by = "downloads"
+                state.sort_direction = "desc"
                 print("\n✅ All filters cleared.")
                 return  # Back to results
             continue
 
-        print("❌ Invalid choice. Choose 1-6 or 0.")
+        print("❌ Invalid choice. Choose 1-7 or 0.")
 
 
 def handle_sort_menu(state: SearchState) -> None:
@@ -114,22 +121,50 @@ def handle_sort_menu(state: SearchState) -> None:
     print(f"Current: {state.sort_by.capitalize()}\n")
 
     print("Sort by:")
-    print("  1  Downloads    (most popular first)")
-    print("  2  Updated      (most recent first)")
-    print("  3  Size         (smallest first)")
+    print("  1  Downloads    (popularity)")
+    print("  2  Updated      (recency)")
+    print("  3  Size         (file size)")
     print("  0  Cancel\n")
 
     choice = input("Your choice: ").strip()
 
     if choice == "1":
         state.sort_by = "downloads"
-        print("\n✅ Sort order changed to: Downloads (most popular first)")
+        print("\n✅ Sort order changed to: Downloads")
     elif choice == "2":
         state.sort_by = "updated"
-        print("\n✅ Sort order changed to: Updated (most recent first)")
+        print("\n✅ Sort order changed to: Updated")
     elif choice == "3":
         state.sort_by = "size"
-        print("\n✅ Sort order changed to: Size (smallest first)")
+        print("\n✅ Sort order changed to: Size")
+    elif choice == "0":
+        return
+    else:
+        print("❌ Invalid choice.")
+
+
+def handle_sort_direction_menu(state: SearchState) -> None:
+    """Handle sort direction selection (ascending/descending)."""
+    print("\n" + "━" * 70)
+    print("📊 Sort Direction")
+    print("━" * 70 + "\n")
+
+    current_dir = "Descending (↓)" if state.sort_direction == "desc" else "Ascending (↑)"
+    print(f"Current: {current_dir}\n")
+
+    print("Sort direction:")
+    print("  1  Descending   (↓ largest/most popular/newest first)")
+    print("  2  Ascending    (↑ smallest/least popular/oldest first)")
+    print("  0  Cancel\n")
+
+    choice = input("Your choice: ").strip()
+
+    if choice == "1":
+        state.sort_direction = "desc"
+        print("\n✅ Sort direction changed to: Descending (↓)")
+    elif choice == "2":
+        state.sort_direction = "asc"
+        print("\n✅ Sort direction changed to: Ascending (↑)")
     elif choice == "0":
         return
     else:
