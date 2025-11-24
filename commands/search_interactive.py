@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import re
 import sys
 
 from .search import SearchState, search_huggingface
@@ -25,39 +26,73 @@ def search_interactive(query: str, state: SearchState, models: list) -> None:
 
         # Show menu
         print("\nOptions:")
-        print("  1-7  Show details")
-        print("  8    Next page (/next)")
-        print("  9    Filters & Sort (/filter)")
-        print("  0    Exit")
-        print("\n💡 Tip: You can type /exit, /next, or /filter at any time.\n")
+        print(f"  1-{state.results_per_page}  Show details")
+        print("  n/N   Next page (/next)")
+        print("  f/F   Filters & Sort (/filter)")
+        print("  s/S   New search (/s <query>)")
+        print("  d/D   Display count (/d <num>)")
+        print("  0     Exit")
+        print("\n💡 Tip: Type /s <keyword>, /d 20, /next, or /filter at any time.\n")
 
-        choice = input("Your choice: ").strip().lower()
+        choice = input("Your choice: ").strip()
+
+        # Check for slash commands first
+        if choice.startswith("/"):
+            result = parse_slash_command(choice, query, state, models)
+            if result is not None:
+                models, query = result
+            continue
+
+        choice_lower = choice.lower()
 
         # Handle exit
-        if choice in ("0", "/exit", "exit", "q", "quit"):
+        if choice_lower in ("0", "exit", "q", "quit"):
             print("👋 Bye!")
             return
 
         # Handle next page
-        if choice in ("8", "/next", "next"):
+        if choice_lower in ("n", "next"):
             start_idx = state.page * state.results_per_page
-            end_idx = start_idx + state.results_per_page
-
-            # Check if we're already at the last page
             if start_idx + state.results_per_page >= len(models):
                 print("\n❗ No more results.")
                 continue
-
             state.page += 1
             continue
 
         # Handle filters
-        if choice in ("9", "/filter", "filter"):
+        if choice_lower in ("f", "filter"):
             handle_filters(state)
-            # Re-search with new filters/sort
             print("\n🔍 Re-searching with new settings...")
             models = search_huggingface(query, state)
-            state.page = 0  # Reset to first page
+            state.page = 0
+            continue
+
+        # Handle new search
+        if choice_lower in ("s", "search"):
+            new_query = input("Enter search query: ").strip()
+            if new_query:
+                query = new_query
+                state.page = 0
+                models = search_huggingface(query, state)
+            continue
+
+        # Handle display count change
+        if choice_lower in ("d", "display"):
+            try:
+                count_str = input("Enter display count (or 'reset' for default): ").strip().lower()
+                if count_str == "reset":
+                    state.results_per_page = 10
+                    print("✅ Reset to default (10 models per page)")
+                else:
+                    count = int(count_str)
+                    if count > 0:
+                        state.results_per_page = count
+                        state.page = 0
+                        print(f"✅ Display count set to {count}")
+                    else:
+                        print("❌ Please enter a positive number.")
+            except ValueError:
+                print("❌ Invalid input.")
             continue
 
         # Handle model selection
@@ -73,7 +108,7 @@ def search_interactive(query: str, state: SearchState, models: list) -> None:
                 else:
                     print("❌ Number out of range. Try again.")
             else:
-                print("❌ Invalid selection. Choose 1-7, 8, 9, or 0.")
+                print(f"❌ Invalid selection. Choose 1-{state.results_per_page}, or n/f/s/d/0.")
         except ValueError:
             print("❌ Invalid input. Please enter a number or command.")
 
@@ -120,3 +155,71 @@ def handle_detail_view(model, state: SearchState) -> None:
             sys.exit(0)
 
         print("❌ Invalid choice. Choose 1, 2, or 0.")
+
+
+def parse_slash_command(cmd: str, query: str, state: SearchState, models: list) -> tuple | None:
+    """Parse slash commands (/s, /d, /next, /filter).
+
+    Returns:
+        Tuple of (updated_models, updated_query) if search was performed, None otherwise.
+    """
+    # /exit and /next are already handled in main loop, but support them here too
+    if cmd in ("/exit", "/quit"):
+        print("👋 Bye!")
+        sys.exit(0)
+
+    if cmd in ("/next", "/n"):
+        start_idx = state.page * state.results_per_page
+        if start_idx + state.results_per_page >= len(models):
+            print("\n❗ No more results.")
+        else:
+            state.page += 1
+            print(f"📄 Page {state.page + 1}")
+        return None
+
+    if cmd in ("/filter", "/f"):
+        handle_filters(state)
+        print("\n🔍 Re-searching with new settings...")
+        models = search_huggingface(query, state)
+        state.page = 0
+        return (models, query)
+
+    # /s <query> - new search
+    if cmd.startswith("/s "):
+        new_query = cmd[3:].strip()
+        if new_query:
+            state.page = 0
+            models = search_huggingface(new_query, state)
+            print(f"\n🔍 Searching for '{new_query}'...")
+            return (models, new_query)
+        else:
+            print("❌ Usage: /s <query>")
+        return None
+
+    # /d <num> or /d reset - change display count
+    if cmd.startswith("/d"):
+        parts = cmd.split()
+        if len(parts) == 1:
+            print("❌ Usage: /d <count> or /d reset")
+            return None
+
+        count_str = parts[1].lower()
+        if count_str == "reset":
+            state.results_per_page = 10
+            state.page = 0
+            print("✅ Reset to default (10 models per page)")
+        else:
+            try:
+                count = int(count_str)
+                if count > 0:
+                    state.results_per_page = count
+                    state.page = 0
+                    print(f"✅ Display count set to {count}")
+                else:
+                    print("❌ Please enter a positive number.")
+            except ValueError:
+                print(f"❌ Invalid count: {count_str}")
+        return None
+
+    print(f"❌ Unknown command: {cmd}")
+    return None
