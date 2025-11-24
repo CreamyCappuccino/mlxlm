@@ -1,5 +1,7 @@
 # 🤖 MLX-LM Development Workflow Guide
 
+**⚠️ Note**: Claude Cloud credits are now exhausted. Development is local-only from this point forward.
+
 This document defines the collaborative workflow between **Claude Cloud** and **Claude Local** (Claude Code) to ensure smooth development and version control.
 
 ---
