@@ -181,12 +181,15 @@ def search_huggingface(query: str, state: SearchState) -> list[dict]:
 
         # Build search parameters
         hf_direction = -1 if state.sort_direction == "desc" else 1  # -1=desc, 1=asc
+        # When no tag filter is applied, increase limit to get better representation of all models
+        # Otherwise, 100 is sufficient for filtered results
+        limit = 500 if not state.tags else 100
         search_params = {
             "search": query,
             "task": "text-generation",
             "sort": hf_sort,
             "direction": hf_direction,
-            "limit": 100,  # Get more for filtering
+            "limit": limit,
             "expand": ["lastModified", "safetensors", "tags"],  # Request expandable fields
         }
 
