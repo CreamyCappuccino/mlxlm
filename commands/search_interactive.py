@@ -28,6 +28,7 @@ def search_interactive(query: str, state: SearchState, models: list) -> None:
         print("\nOptions:")
         print(f"  1-{state.results_per_page}  Show details")
         print("  N     Next page")
+        print("  P     Previous page")
         print("  F     Filters & Sort")
         print("  S     New search")
         print("  D     Display count")
@@ -57,6 +58,13 @@ def search_interactive(query: str, state: SearchState, models: list) -> None:
                 print("\n❗ No more results.")
                 continue
             state.page += 1
+            continue
+
+        if action == "prev_page":
+            if state.page == 0:
+                print("\n❗ Already on first page.")
+                continue
+            state.page -= 1
             continue
 
         if action == "filters":
@@ -158,6 +166,7 @@ def parse_menu_choice(choice: str, max_display: int) -> tuple[str, any]:
         Tuple of (action, param):
         - ("exit", None) for exit commands
         - ("next_page", None) for next page
+        - ("prev_page", None) for previous page
         - ("filters", None) for filters menu
         - ("new_search", None) for new search
         - ("set_display_count", None) for display count change
@@ -170,9 +179,13 @@ def parse_menu_choice(choice: str, max_display: int) -> tuple[str, any]:
     if choice_lower in ("0", "exit", "q", "quit"):
         return ("exit", None)
 
-    # Next page (uppercase N only)
+    # Next page
     if choice_lower == "n":
         return ("next_page", None)
+
+    # Previous page
+    if choice_lower == "p":
+        return ("prev_page", None)
 
     # Filters menu (uppercase F only)
     if choice_lower == "f":
