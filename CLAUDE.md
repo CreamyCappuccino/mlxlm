@@ -270,8 +270,24 @@ When integrating external libraries (e.g., prompt-toolkit, MLX), follow these pr
 - `README.md`: Project overview
 - `USAGE.md`: User documentation
 - `CONTRIBUTING.md`: Contribution guidelines
+- **Design Memos**: `/DesignMemo/` - Japanese design documentation for internal reference only
 
 **Tip**: Use `mlxlm search --help-detail` (without query) to get comprehensive search documentation. Works with or without a query argument.
+
+---
+
+## 🌐 Language Policy
+
+**Public-facing content** (GitHub, code, comments, documentation):
+- ✅ **English ONLY** - This is an OSS project
+
+**Internal documentation** (design memos, implementation notes):
+- ✅ **Japanese** - For author's reference and project documentation
+- Location: `/DesignMemo/` folder
+- Used for detailed planning, technical rationale, and implementation notes
+
+**Test files and code**:
+- ✅ **English ONLY** - No Japanese text in print statements, assertions, or comments
 
 ---
 

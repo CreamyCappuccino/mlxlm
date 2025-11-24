@@ -91,8 +91,8 @@ For detailed options and more examples: mlxlm search <query> --help-detail
         help="Sort by downloads/updated/size (default: downloads)"
     )
     search_parser.add_argument(
-        "--limit", type=int, default=7, metavar="N",
-        help="Results per page (default: 7)"
+        "--limit", type=int, default=10, metavar="N",
+        help="Results per page (default: 10)"
     )
     search_parser.add_argument(
         "--no-interactive", action="store_true",

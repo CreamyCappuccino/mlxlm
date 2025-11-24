@@ -60,7 +60,7 @@ class SearchState:
         self.tags: list[str] = []
         self.updated_within_days: Optional[int] = None
         self.page: int = 0
-        self.results_per_page: int = 7
+        self.results_per_page: int = 10
 
     def has_filters(self) -> bool:
         """Check if any filters are active."""
@@ -358,14 +358,7 @@ NOTES:
         return
 
     if not query:
-        print("❌ Search query required.")
-        print("\nUsage:")
-        print("  mlxlm search <query> [options]")
-        print("\nExample:")
-        print("  mlxlm search llama")
-        print("  mlxlm search mistral --max-size 10")
-        print("\nFor detailed help: mlxlm search <query> --help-detail")
-        sys.exit(1)
+        query = ""  # Empty query shows top models
 
     # Initialize state
     state = SearchState()
