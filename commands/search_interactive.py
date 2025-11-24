@@ -168,20 +168,20 @@ def parse_menu_choice(choice: str, max_display: int) -> tuple[str, any]:
     if choice_lower in ("0", "exit", "q", "quit"):
         return ("exit", None)
 
-    # Next page
-    if choice_lower in ("n", "next"):
+    # Next page (uppercase N only)
+    if choice_lower == "n":
         return ("next_page", None)
 
-    # Filters menu
-    if choice_lower in ("f", "filter"):
+    # Filters menu (uppercase F only)
+    if choice_lower == "f":
         return ("filters", None)
 
-    # New search
-    if choice_lower in ("s", "search"):
+    # New search (uppercase S only)
+    if choice_lower == "s":
         return ("new_search", None)
 
-    # Display count
-    if choice_lower in ("d", "display"):
+    # Display count (uppercase D only)
+    if choice_lower == "d":
         return ("set_display_count", None)
 
     # Model selection (numeric)
@@ -206,9 +206,11 @@ def parse_slash_command(cmd: str, query: str, state: SearchState, models: list) 
         print("👋 Bye!")
         sys.exit(0)
 
-    # /search <query> - new search
-    if cmd.startswith("/search "):
-        new_query = cmd[8:].strip()
+    # /search or /s <query> - new search
+    if cmd.startswith("/search ") or cmd.startswith("/s "):
+        # Handle both /search and /s
+        prefix_len = 8 if cmd.startswith("/search ") else 3
+        new_query = cmd[prefix_len:].strip()
         if new_query:
             state.page = 0
             models = search_huggingface(new_query, state)
@@ -218,8 +220,8 @@ def parse_slash_command(cmd: str, query: str, state: SearchState, models: list) 
             print("❌ Usage: /search <query>")
         return None
 
-    # /display <count> or /display reset - change display count
-    if cmd.startswith("/display"):
+    # /display or /d <count> or /display reset - change display count
+    if cmd.startswith("/display") or cmd.startswith("/d"):
         parts = cmd.split()
         if len(parts) == 1:
             print("❌ Usage: /display <count> or /display reset")

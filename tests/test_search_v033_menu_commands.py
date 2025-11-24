@@ -199,15 +199,16 @@ class TestParseSlashCommand:
         with pytest.raises(SystemExit):
             parse_slash_command("/quit", "", search_state, mock_models)
 
-    def test_parse_slash_command_old_format_rejected(self, search_state, mock_models):
-        """Test that old /s and /d short commands are rejected."""
-        # /s should not be recognized (must use /search)
-        result = parse_slash_command("/s llama", "", search_state, mock_models)
-        assert result is None
+    def test_parse_slash_command_short_format_supported(self, search_state, mock_models):
+        """Test that short /s and /d commands are also supported."""
+        # /s qwen should work (shorthand for /search)
+        result = parse_slash_command("/s qwen", "llama", search_state, mock_models)
+        assert result is not None  # Should perform search
 
-        # /d should not be recognized (must use /display)
-        result = parse_slash_command("/d 20", "", search_state, mock_models)
+        # /d 20 should work (shorthand for /display)
+        result = parse_slash_command("/d 20", "test", search_state, mock_models)
         assert result is None
+        assert search_state.results_per_page == 20
 
     def test_parse_slash_command_unknown_command(self, search_state, mock_models):
         """Test unknown slash command."""
