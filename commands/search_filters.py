@@ -5,6 +5,9 @@
 
 from __future__ import annotations
 
+import re
+from typing import Optional
+
 from .search import SearchState, COMMON_TAGS
 
 
@@ -21,6 +24,8 @@ def handle_filters(state: SearchState) -> bool:
     initial_max_size_gb = state.max_size_gb
     initial_min_downloads = state.min_downloads
     initial_updated_within_days = state.updated_within_days
+    initial_param_scale = state.param_scale
+    initial_param_compare = state.param_compare
 
     # Show current filters and ask if user wants to keep them
     if state.has_filters() or state.sort_by != "downloads":
@@ -42,6 +47,8 @@ def handle_filters(state: SearchState) -> bool:
             state.min_downloads = None
             state.tags = []
             state.updated_within_days = None
+            state.param_scale = None
+            state.param_compare = "eq"
             state.sort_by = "downloads"
             print("\n✅ All settings cleared.")
 
@@ -66,11 +73,12 @@ def handle_filters(state: SearchState) -> bool:
         print("  3  Model size (max GB)")
         print("  4  Minimum downloads")
         print("  5  Tags (e.g., mlx, quantized, instruct)")
-        print("  6  Last updated (within X days)")
-        print("  7  Clear all filters")
-        print("  8  Save current filters as preset")
-        print("  9  Load preset")
-        print("  10 Delete preset")
+        print("  6  Parameter scale (7B, 13B, 30B, etc.)")
+        print("  7  Last updated (within X days)")
+        print("  8  Clear all filters")
+        print("  9  Save current filters as preset")
+        print("  10 Load preset")
+        print("  11 Delete preset")
         print("  0  Back to results")
         print("\n💡 Tip: You can type /exit at any time to cancel.\n")
 
@@ -85,7 +93,9 @@ def handle_filters(state: SearchState) -> bool:
                 state.tags != initial_tags or
                 state.max_size_gb != initial_max_size_gb or
                 state.min_downloads != initial_min_downloads or
-                state.updated_within_days != initial_updated_within_days
+                state.updated_within_days != initial_updated_within_days or
+                state.param_scale != initial_param_scale or
+                state.param_compare != initial_param_compare
             )
             return changed
 
@@ -114,19 +124,26 @@ def handle_filters(state: SearchState) -> bool:
             handle_tags_filter(state)
             continue
 
-        # Updated within
+        # Parameter scale (v0.3.5)
         if choice == "6":
+            handle_param_scale_filter(state)
+            continue
+
+        # Updated within
+        if choice == "7":
             handle_updated_filter(state)
             continue
 
         # Clear all
-        if choice == "7":
+        if choice == "8":
             confirm = input("\nClear all filters? [(y)/n]: ").strip().lower()
             if confirm in ("", "y", "yes"):
                 state.max_size_gb = None
                 state.min_downloads = None
                 state.tags = []
                 state.updated_within_days = None
+                state.param_scale = None
+                state.param_compare = "eq"
                 state.sort_by = "downloads"
                 state.sort_direction = "desc"
                 print("\n✅ All filters cleared.")
@@ -135,7 +152,7 @@ def handle_filters(state: SearchState) -> bool:
             continue
 
         # Save preset
-        if choice == "8":
+        if choice == "9":
             print("\n" + "━" * 70)
             print("💾 Save as Preset")
             print("━" * 70 + "\n")
@@ -150,7 +167,7 @@ def handle_filters(state: SearchState) -> bool:
             continue
 
         # Load preset
-        if choice == "9":
+        if choice == "10":
             presets = list_presets()
             if not presets:
                 print("\n❌ No presets available. Save one first!")
@@ -196,7 +213,7 @@ def handle_filters(state: SearchState) -> bool:
             continue
 
         # Delete preset
-        if choice == "10":
+        if choice == "11":
             presets = list_presets()
             if not presets:
                 print("\n❌ No presets available.")
@@ -231,7 +248,7 @@ def handle_filters(state: SearchState) -> bool:
                 print("❌ Invalid input")
             continue
 
-        print("❌ Invalid choice. Choose 1-10 or 0.")
+        print("❌ Invalid choice. Choose 1-11 or 0.")
 
 
 def handle_sort_menu(state: SearchState) -> None:
@@ -594,3 +611,128 @@ def delete_preset(preset_name: str) -> bool:
         return save_user_config(user_config)
 
     return False
+
+
+# ===== Parameter Scale Filter (v0.3.5) =====
+
+def extract_param_scale(model_id: str, card_data: Optional[dict] = None) -> Optional[int]:
+    """
+    Extract parameter scale (in billions) from model ID and card data.
+
+    Examples:
+        "Llama-2-7B" → 7
+        "Mistral-7B-v0.1" → 7
+        "gemma-3-27b-instruct" → 27
+        "7" → 7 (direct integer)
+
+    Supports multiple formats:
+        - "27b", "27B", "27-b", "27_b"
+        - "27 billion", "27B billion"
+        - Direct integers: 27
+
+    Args:
+        model_id: The model repository ID (e.g., "meta-llama/Llama-2-7B")
+        card_data: Optional model card metadata (for fallback extraction)
+
+    Returns:
+        The parameter scale in billions, or None if not found
+    """
+    if not model_id:
+        return None
+
+    # Primary extraction: look for XB pattern in model_id
+    # Patterns: 7B, 7b, 7-b, 7_b, 7 billion, 7B billion, etc.
+    patterns = [
+        r'(\d+)\s*[Bb](?:\s+billion)?',  # 7B, 7b, 7 B, 7 billion, 7B billion
+        r'(\d+)[-_][Bb]',                  # 7-b, 7_B
+    ]
+
+    for pattern in patterns:
+        match = re.search(pattern, model_id)
+        if match:
+            return int(match.group(1))
+
+    # Fallback: check card_data for model_size, num_parameters, parameters fields
+    if card_data and isinstance(card_data, dict):
+        # Try model_size field (sometimes contains "7B")
+        model_size = card_data.get('model_size')
+        if model_size and isinstance(model_size, str):
+            match = re.search(r'(\d+)\s*[Bb](?:\s+billion)?', model_size)
+            if match:
+                return int(match.group(1))
+
+        # Try parameters field
+        params = card_data.get('parameters')
+        if params and isinstance(params, str):
+            match = re.search(r'(\d+)\s*[Bb](?:\s+billion)?', params)
+            if match:
+                return int(match.group(1))
+
+    return None
+
+
+def handle_param_scale_filter(state: SearchState) -> None:
+    """
+    Handle parameter scale filter input from user.
+
+    Prompts for:
+    1. Parameter scale (e.g., 7, 13, 30)
+    2. Comparison operator (eq, lt, gt)
+
+    Updates state.param_scale and state.param_compare.
+    """
+    print("\n" + "━" * 70)
+    print("📊 Parameter Scale Filter")
+    print("━" * 70 + "\n")
+
+    # Show current filter
+    if state.param_scale:
+        op_symbol = {"eq": "=", "lt": "<", "gt": ">"}[state.param_compare]
+        print(f"Current: Parameters {op_symbol} {state.param_scale}B\n")
+    else:
+        print("Current: No parameter scale filter\n")
+
+    print("Common model sizes:")
+    print("  7   - Small models (Llama-2-7B, Mistral-7B)")
+    print("  13  - Medium models (Llama-2-13B, Mistral-8x7B)")
+    print("  27  - Large models (Gemma-27B, Qwen-27B)")
+    print("  30  - Very large models (Llama-2-70B, Falcon-180B)")
+    print("  0   - Remove filter\n")
+
+    # Get parameter scale input
+    scale_input = input("Enter parameter scale in billions (e.g., 7, 13, 30, or 0 to remove): ").strip()
+
+    if not scale_input:
+        return
+
+    try:
+        scale = int(scale_input)
+        if scale <= 0:
+            state.param_scale = None
+            state.param_compare = "eq"
+            print("\n✅ Parameter scale filter removed.")
+            return
+
+        # Get comparison operator
+        print("\nComparison operator:")
+        print("  1  = (eq)   - Exactly this size")
+        print("  2  < (lt)   - Less than this size")
+        print("  3  > (gt)   - Greater than this size\n")
+
+        compare_input = input("Choose comparison (1/2/3) [1]: ").strip().lower()
+
+        if compare_input == "2":
+            compare = "lt"
+        elif compare_input == "3":
+            compare = "gt"
+        else:
+            compare = "eq"
+
+        state.param_scale = scale
+        state.param_compare = compare
+
+        op_symbol = {"eq": "=", "lt": "<", "gt": ">"}[compare]
+        print(f"\n✅ Parameter scale filter set: {op_symbol} {scale}B")
+
+    except ValueError:
+        print("❌ Invalid number. Please enter a valid integer.")
