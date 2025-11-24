@@ -217,7 +217,9 @@ def search_huggingface(query: str, state: SearchState) -> list[dict]:
         filtered_models = []
         for model in models:
             # Size filter
-            if state.max_size_gb and model.safetensors:
+            if state.max_size_gb:
+                if not model.safetensors:
+                    continue  # Models without size data are excluded when size filter is active
                 total_size = model.safetensors.get("total", 0)
                 if total_size > state.max_size_gb * (1024 ** 3):
                     continue
