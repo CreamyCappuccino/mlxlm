@@ -72,7 +72,7 @@ For detailed options and more examples: mlxlm search <query> --help-detail
         """,
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
-    search_parser.add_argument("query", help="Search query (e.g., 'llama', 'mistral')")
+    search_parser.add_argument("query", nargs='?', help="Search query (e.g., 'llama', 'mistral')")
     search_parser.add_argument(
         "--filter-tag", action="append", dest="tags",
         help="Filter by tag (can be repeated)"
