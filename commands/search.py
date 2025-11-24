@@ -236,10 +236,13 @@ def search_huggingface(query: str, state: SearchState) -> list[dict]:
         # Client-side sorting for "size" (HF API doesn't support it)
         if state.sort_by == "size":
             # Sort by actual size, pushing models with unknown size to the end
+            # In DESC order (large first), N/A should be last → use -inf
+            # In ASC order (small first), N/A should be last → use +inf
             def size_sort_key(m):
                 if m.safetensors and m.safetensors.get("total"):
                     return m.safetensors.get("total", 0)
-                return float('inf')  # Unknown size goes to the end
+                # Unknown size goes to the end in both directions
+                return float('-inf') if state.sort_direction == "desc" else float('inf')
 
             filtered_models.sort(
                 key=size_sort_key,
