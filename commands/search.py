@@ -208,6 +208,8 @@ def search_huggingface(query: str, state: SearchState) -> list[dict]:
         models = list(api.list_models(**search_params))
 
         # Apply additional filters
+        from .search_filters import extract_param_scale
+
         filtered_models = []
         for model in models:
             # Size filter
@@ -239,6 +241,19 @@ def search_huggingface(query: str, state: SearchState) -> list[dict]:
                         continue
                 except Exception:
                     pass
+
+            # Parameter scale filter (v0.3.5)
+            if state.param_scale:
+                model_params = extract_param_scale(model.id, getattr(model, 'cardData', None))
+                if model_params is None:
+                    continue  # Models with unknown parameter scale are excluded when param filter is active
+
+                if state.param_compare == "eq" and model_params != state.param_scale:
+                    continue
+                elif state.param_compare == "lt" and model_params >= state.param_scale:
+                    continue
+                elif state.param_compare == "gt" and model_params <= state.param_scale:
+                    continue
 
             filtered_models.append(model)
 
@@ -302,6 +317,8 @@ def search_main(
     max_size: Optional[int] = None,
     min_downloads: Optional[int] = None,
     updated_within: Optional[int] = None,
+    param_scale: Optional[int] = None,
+    param_compare: str = "eq",
     sort: str = "downloads",
     limit: int = 7,
     no_interactive: bool = False,
@@ -404,6 +421,9 @@ NOTES:
         state.min_downloads = min_downloads
     if updated_within:
         state.updated_within_days = updated_within
+    if param_scale:
+        state.param_scale = param_scale
+        state.param_compare = param_compare
 
     # Perform search
     models = search_huggingface(query, state)
@@ -420,6 +440,8 @@ NOTES:
                 "min_downloads": state.min_downloads,
                 "tags": state.tags,
                 "updated_within_days": state.updated_within_days,
+                "param_scale": state.param_scale,
+                "param_compare": state.param_compare,
             },
             "results": [
                 {

@@ -68,6 +68,8 @@ def main() -> None:
             max_size=getattr(args, "max_size", None),
             min_downloads=getattr(args, "min_downloads", None),
             updated_within=getattr(args, "updated_within", None),
+            param_scale=getattr(args, "param_scale", None),
+            param_compare=getattr(args, "param_compare", "eq"),
             sort=getattr(args, "sort", "downloads"),
             limit=getattr(args, "limit", 7),
             no_interactive=getattr(args, "no_interactive", False),
