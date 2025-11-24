@@ -43,15 +43,14 @@ def search_interactive(query: str, state: SearchState, models: list) -> None:
                 models, query = result
             continue
 
-        choice_lower = choice.lower()
+        # Parse menu choice
+        action, param = parse_menu_choice(choice, state.results_per_page)
 
-        # Handle exit
-        if choice_lower in ("0", "exit", "q", "quit"):
+        if action == "exit":
             print("👋 Bye!")
             return
 
-        # Handle next page
-        if choice_lower in ("n", "next"):
+        if action == "next_page":
             start_idx = state.page * state.results_per_page
             if start_idx + state.results_per_page >= len(models):
                 print("\n❗ No more results.")
@@ -59,16 +58,14 @@ def search_interactive(query: str, state: SearchState, models: list) -> None:
             state.page += 1
             continue
 
-        # Handle filters
-        if choice_lower in ("f", "filter"):
+        if action == "filters":
             handle_filters(state)
             print("\n🔍 Re-searching with new settings...")
             models = search_huggingface(query, state)
             state.page = 0
             continue
 
-        # Handle new search
-        if choice_lower in ("s", "search"):
+        if action == "new_search":
             new_query = input("Enter search query: ").strip()
             if new_query:
                 query = new_query
@@ -76,8 +73,7 @@ def search_interactive(query: str, state: SearchState, models: list) -> None:
                 models = search_huggingface(query, state)
             continue
 
-        # Handle display count change
-        if choice_lower in ("d", "display"):
+        if action == "set_display_count":
             try:
                 count_str = input("Enter display count (or 'reset' for default): ").strip().lower()
                 if count_str == "reset":
@@ -95,22 +91,18 @@ def search_interactive(query: str, state: SearchState, models: list) -> None:
                 print("❌ Invalid input.")
             continue
 
-        # Handle model selection
-        try:
-            idx = int(choice) - 1
+        if action == "show_detail":
             start_idx = state.page * state.results_per_page
-
-            if 0 <= idx < state.results_per_page:
-                actual_idx = start_idx + idx
-                if actual_idx < len(models):
-                    model = models[actual_idx]
-                    handle_detail_view(model, state)
-                else:
-                    print("❌ Number out of range. Try again.")
+            actual_idx = start_idx + param
+            if actual_idx < len(models):
+                model = models[actual_idx]
+                handle_detail_view(model, state)
             else:
-                print(f"❌ Invalid selection. Choose 1-{state.results_per_page}, or n/f/s/d/0.")
-        except ValueError:
-            print("❌ Invalid input. Please enter a number or command.")
+                print("❌ Number out of range. Try again.")
+            continue
+
+        if action == "invalid":
+            print(f"❌ Invalid selection. Choose 1-{state.results_per_page}, or n/f/s/d/0.")
 
 
 def handle_detail_view(model, state: SearchState) -> None:
@@ -155,6 +147,52 @@ def handle_detail_view(model, state: SearchState) -> None:
             sys.exit(0)
 
         print("❌ Invalid choice. Choose 1, 2, or 0.")
+
+
+def parse_menu_choice(choice: str, max_display: int) -> tuple[str, any]:
+    """Parse menu choice and return action type and parameter.
+
+    Returns:
+        Tuple of (action, param):
+        - ("exit", None) for exit commands
+        - ("next_page", None) for next page
+        - ("filters", None) for filters menu
+        - ("new_search", None) for new search
+        - ("set_display_count", None) for display count change
+        - ("show_detail", index) for model selection
+        - ("invalid", None) for invalid input
+    """
+    choice_lower = choice.lower()
+
+    # Exit commands
+    if choice_lower in ("0", "exit", "q", "quit"):
+        return ("exit", None)
+
+    # Next page
+    if choice_lower in ("n", "next"):
+        return ("next_page", None)
+
+    # Filters menu
+    if choice_lower in ("f", "filter"):
+        return ("filters", None)
+
+    # New search
+    if choice_lower in ("s", "search"):
+        return ("new_search", None)
+
+    # Display count
+    if choice_lower in ("d", "display"):
+        return ("set_display_count", None)
+
+    # Model selection (numeric)
+    try:
+        idx = int(choice) - 1
+        if 0 <= idx < max_display:
+            return ("show_detail", idx)
+        else:
+            return ("invalid", None)
+    except ValueError:
+        return ("invalid", None)
 
 
 def parse_slash_command(cmd: str, query: str, state: SearchState, models: list) -> tuple | None:
