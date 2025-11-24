@@ -27,12 +27,12 @@ def search_interactive(query: str, state: SearchState, models: list) -> None:
         # Show menu
         print("\nOptions:")
         print(f"  1-{state.results_per_page}  Show details")
-        print("  n/N   Next page (/next)")
-        print("  f/F   Filters & Sort (/filter)")
-        print("  s/S   New search (/s <query>)")
-        print("  d/D   Display count (/d <num>)")
+        print("  n/N   Next page")
+        print("  f/F   Filters & Sort")
+        print("  s/S   New search")
+        print("  d/D   Display count")
         print("  0     Exit")
-        print("\n💡 Tip: Type /s <keyword>, /d 20, /next, or /filter at any time.\n")
+        print("\n💡 Tip: Use slash commands for quick actions: /search qwen, /display 20, /exit\n")
 
         choice = input("Your choice: ").strip()
 
@@ -102,7 +102,7 @@ def search_interactive(query: str, state: SearchState, models: list) -> None:
             continue
 
         if action == "invalid":
-            print(f"❌ Invalid selection. Choose 1-{state.results_per_page}, or n/f/s/d/0.")
+            print(f"❌ Invalid selection. Choose 1-{state.results_per_page}, or n/f/s/d/0, or use slash commands (/search, /display).")
 
 
 def handle_detail_view(model, state: SearchState) -> None:
@@ -196,49 +196,33 @@ def parse_menu_choice(choice: str, max_display: int) -> tuple[str, any]:
 
 
 def parse_slash_command(cmd: str, query: str, state: SearchState, models: list) -> tuple | None:
-    """Parse slash commands (/s, /d, /next, /filter).
+    """Parse slash commands (/search, /display, /exit).
 
     Returns:
         Tuple of (updated_models, updated_query) if search was performed, None otherwise.
     """
-    # /exit and /next are already handled in main loop, but support them here too
+    # /exit and /quit
     if cmd in ("/exit", "/quit"):
         print("👋 Bye!")
         sys.exit(0)
 
-    if cmd in ("/next", "/n"):
-        start_idx = state.page * state.results_per_page
-        if start_idx + state.results_per_page >= len(models):
-            print("\n❗ No more results.")
-        else:
-            state.page += 1
-            print(f"📄 Page {state.page + 1}")
-        return None
-
-    if cmd in ("/filter", "/f"):
-        handle_filters(state)
-        print("\n🔍 Re-searching with new settings...")
-        models = search_huggingface(query, state)
-        state.page = 0
-        return (models, query)
-
-    # /s <query> - new search
-    if cmd.startswith("/s "):
-        new_query = cmd[3:].strip()
+    # /search <query> - new search
+    if cmd.startswith("/search "):
+        new_query = cmd[8:].strip()
         if new_query:
             state.page = 0
             models = search_huggingface(new_query, state)
             print(f"\n🔍 Searching for '{new_query}'...")
             return (models, new_query)
         else:
-            print("❌ Usage: /s <query>")
+            print("❌ Usage: /search <query>")
         return None
 
-    # /d <num> or /d reset - change display count
-    if cmd.startswith("/d"):
+    # /display <count> or /display reset - change display count
+    if cmd.startswith("/display"):
         parts = cmd.split()
         if len(parts) == 1:
-            print("❌ Usage: /d <count> or /d reset")
+            print("❌ Usage: /display <count> or /display reset")
             return None
 
         count_str = parts[1].lower()
