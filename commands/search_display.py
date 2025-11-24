@@ -116,7 +116,8 @@ def display_results(models: list, state: SearchState) -> None:
     showing_end = min(end_idx, total_models)
 
     # Header
-    print(f"\n🔍 Found {total_models} model{'s' if total_models != 1 else ''} matching '{state.query}':\n")
+    # Note: total_models is the limit from API (currently 500 or filtered), not all available models
+    print(f"\n🔍 Showing top {total_models} model{'s' if total_models != 1 else ''} matching '{state.query}':\n")
 
     # Column headers
     print(f" #  {'MODEL NAME':<50} {'SIZE':<10} {'DOWNLOADS':<12} UPDATED")
