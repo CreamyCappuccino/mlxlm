@@ -160,15 +160,17 @@ class TestParseSlashCommand:
         result = parse_slash_command("/search", "", search_state, mock_models)
         assert result is None
 
-    def test_parse_slash_command_display_set_count(self, search_state, mock_models):
+    def test_parse_slash_command_display_set_count(self, search_state, mock_models, monkeypatch):
         """Test /display <count> command to change display count."""
+        monkeypatch.setattr('builtins.input', lambda _: 'n')  # Mock input to say 'no' to save
         result = parse_slash_command("/display 20", "test", search_state, mock_models)
         assert result is None
         assert search_state.results_per_page == 20
         assert search_state.page == 0
 
-    def test_parse_slash_command_display_reset(self, search_state, mock_models):
+    def test_parse_slash_command_display_reset(self, search_state, mock_models, monkeypatch):
         """Test /display reset command to reset to default."""
+        monkeypatch.setattr('builtins.input', lambda _: 'n')  # Mock input to say 'no' to save
         search_state.results_per_page = 20
         result = parse_slash_command("/display reset", "test", search_state, mock_models)
         assert result is None
@@ -199,13 +201,14 @@ class TestParseSlashCommand:
         with pytest.raises(SystemExit):
             parse_slash_command("/quit", "", search_state, mock_models)
 
-    def test_parse_slash_command_short_format_supported(self, search_state, mock_models):
+    def test_parse_slash_command_short_format_supported(self, search_state, mock_models, monkeypatch):
         """Test that short /s and /d commands are also supported."""
         # /s qwen should work (shorthand for /search)
         result = parse_slash_command("/s qwen", "llama", search_state, mock_models)
         assert result is not None  # Should perform search
 
         # /d 20 should work (shorthand for /display)
+        monkeypatch.setattr('builtins.input', lambda _: 'n')  # Mock input to say 'no' to save
         result = parse_slash_command("/d 20", "test", search_state, mock_models)
         assert result is None
         assert search_state.results_per_page == 20

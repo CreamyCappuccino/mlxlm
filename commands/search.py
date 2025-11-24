@@ -375,6 +375,15 @@ NOTES:
     if not query:
         query = ""  # Empty query shows top models
 
+    # Load user config for search settings
+    from core import load_user_config
+    user_config = load_user_config()
+    search_config = user_config.get('search', {})
+
+    # Apply saved default_display_count if limit is at default (7)
+    if limit == 7:  # Default value indicates no explicit --limit flag
+        limit = search_config.get('default_display_count', 10)
+
     # Initialize state
     state = SearchState()
     state.results_per_page = limit

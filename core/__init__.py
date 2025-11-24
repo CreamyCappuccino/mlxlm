@@ -599,6 +599,10 @@ def get_default_config() -> dict:
         },
         "sessions": {
             "auto_save_interval": 300
+        },
+        "search": {
+            "default_display_count": 10,
+            "presets": {}
         }
     }
 

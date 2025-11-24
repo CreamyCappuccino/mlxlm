@@ -68,6 +68,9 @@ def handle_filters(state: SearchState) -> bool:
         print("  5  Tags (e.g., mlx, quantized, instruct)")
         print("  6  Last updated (within X days)")
         print("  7  Clear all filters")
+        print("  8  Save current filters as preset")
+        print("  9  Load preset")
+        print("  10 Delete preset")
         print("  0  Back to results")
         print("\n💡 Tip: You can type /exit at any time to cancel.\n")
 
@@ -131,7 +134,104 @@ def handle_filters(state: SearchState) -> bool:
                 return True
             continue
 
-        print("❌ Invalid choice. Choose 1-7 or 0.")
+        # Save preset
+        if choice == "8":
+            print("\n" + "━" * 70)
+            print("💾 Save as Preset")
+            print("━" * 70 + "\n")
+            auto_name = auto_generate_preset_name(state)
+            user_name = input(f"Confirm or enter custom name [{auto_name}]: ").strip()
+            preset_name = user_name if user_name else auto_name
+
+            if save_preset(preset_name, state):
+                print(f"✅ Preset '{preset_name}' saved!")
+            else:
+                print(f"❌ Failed to save preset '{preset_name}'")
+            continue
+
+        # Load preset
+        if choice == "9":
+            presets = list_presets()
+            if not presets:
+                print("\n❌ No presets available. Save one first!")
+                continue
+
+            print("\n" + "━" * 70)
+            print("📚 Load Preset")
+            print("━" * 70 + "\n")
+
+            preset_list = list(presets.keys())
+            for i, preset_name in enumerate(preset_list, 1):
+                preset_data = presets[preset_name]
+                # Display preset summary
+                summary_parts = []
+                if preset_data.get("sort_by"):
+                    summary_parts.append(f"Sort: {preset_data['sort_by']}")
+                if preset_data.get("max_size_gb"):
+                    summary_parts.append(f"Size: max {preset_data['max_size_gb']} GB")
+                if preset_data.get("tags"):
+                    summary_parts.append(f"Tags: {', '.join(preset_data['tags'])}")
+                summary = ", ".join(summary_parts) if summary_parts else "(no filters)"
+                print(f"  {i}  {preset_name} ({summary})")
+
+            print("  0  Cancel\n")
+
+            try:
+                choice_str = input("Select preset: ").strip()
+                if choice_str == "0":
+                    continue
+                idx = int(choice_str) - 1
+                if 0 <= idx < len(preset_list):
+                    preset_name = preset_list[idx]
+                    if load_preset(preset_name, state):
+                        print(f"✅ Preset '{preset_name}' loaded!")
+                        # Return True to trigger API re-fetch with new filters
+                        return True
+                    else:
+                        print(f"❌ Failed to load preset '{preset_name}'")
+                else:
+                    print("❌ Invalid preset number")
+            except ValueError:
+                print("❌ Invalid input")
+            continue
+
+        # Delete preset
+        if choice == "10":
+            presets = list_presets()
+            if not presets:
+                print("\n❌ No presets available.")
+                continue
+
+            print("\n" + "━" * 70)
+            print("🗑️  Delete Preset")
+            print("━" * 70 + "\n")
+
+            preset_list = list(presets.keys())
+            for i, preset_name in enumerate(preset_list, 1):
+                print(f"  {i}  {preset_name}")
+
+            print("  0  Cancel\n")
+
+            try:
+                choice_str = input("Select preset to delete: ").strip()
+                if choice_str == "0":
+                    continue
+                idx = int(choice_str) - 1
+                if 0 <= idx < len(preset_list):
+                    preset_name = preset_list[idx]
+                    confirm = input(f"\nDelete '{preset_name}'? [y/N]: ").strip().lower()
+                    if confirm in ("y", "yes"):
+                        if delete_preset(preset_name):
+                            print(f"✅ Preset '{preset_name}' deleted.")
+                        else:
+                            print(f"❌ Failed to delete preset '{preset_name}'")
+                else:
+                    print("❌ Invalid preset number")
+            except ValueError:
+                print("❌ Invalid input")
+            continue
+
+        print("❌ Invalid choice. Choose 1-10 or 0.")
 
 
 def handle_sort_menu(state: SearchState) -> None:
@@ -350,3 +450,138 @@ def handle_updated_filter(state: SearchState) -> None:
         return
     else:
         print("❌ Invalid choice.")
+
+
+# ===== Preset Management (v0.3.4) =====
+
+def auto_generate_preset_name(state: SearchState) -> str:
+    """
+    Auto-generate a meaningful preset name from filter state (v0.3.5 compatible).
+
+    Priority:
+    1. Tags (first tag)
+    2. Size (max_size_gb)
+    3. Param scale (param_scale with comparison)
+    4. Sort direction (if not desc)
+    5. Fallback: timestamp-based name
+    """
+    from datetime import datetime
+
+    parts = []
+
+    # 1. Tags (highest priority)
+    if state.tags:
+        parts.append(state.tags[0].lower())
+
+    # 2. Size
+    if state.max_size_gb:
+        parts.append(f"{int(state.max_size_gb)}gb")
+
+    # 3. Param scale (v0.3.5 compatibility)
+    if hasattr(state, 'param_scale') and state.param_scale:
+        param_str = f"{state.param_scale}b"
+        if hasattr(state, 'param_compare'):
+            if state.param_compare == "lt":
+                param_str += "_under"
+            elif state.param_compare == "gt":
+                param_str += "_over"
+        parts.append(param_str)
+
+    # 4. Sort direction (if not default desc)
+    if state.sort_direction != "desc":
+        parts.append(state.sort_direction)
+
+    # Fallback: timestamp
+    if not parts:
+        return f"preset_{datetime.now().strftime('%m%d_%H%M')}"
+
+    return "_".join(parts)
+
+
+def save_preset(preset_name: str, state: SearchState) -> bool:
+    """Save current filter state as a preset."""
+    from core import load_user_config, save_user_config
+
+    user_config = load_user_config()
+    if 'search' not in user_config:
+        user_config['search'] = {}
+    if 'presets' not in user_config['search']:
+        user_config['search']['presets'] = {}
+
+    # Save filter state
+    preset_data = {
+        "sort_by": state.sort_by,
+        "sort_direction": state.sort_direction,
+    }
+
+    # Optional fields (only save if set)
+    if state.max_size_gb:
+        preset_data["max_size_gb"] = state.max_size_gb
+    if state.min_downloads:
+        preset_data["min_downloads"] = state.min_downloads
+    if state.tags:
+        preset_data["tags"] = state.tags
+    if state.updated_within_days:
+        preset_data["updated_within_days"] = state.updated_within_days
+
+    # v0.3.5 compatibility
+    if hasattr(state, 'param_scale') and state.param_scale:
+        preset_data["param_scale"] = state.param_scale
+    if hasattr(state, 'param_compare') and state.param_compare:
+        preset_data["param_compare"] = state.param_compare
+
+    user_config['search']['presets'][preset_name] = preset_data
+    return save_user_config(user_config)
+
+
+def load_preset(preset_name: str, state: SearchState) -> bool:
+    """Load a preset into current filter state."""
+    from core import load_user_config
+
+    user_config = load_user_config()
+    if 'search' not in user_config or 'presets' not in user_config['search']:
+        return False
+
+    preset_data = user_config['search']['presets'].get(preset_name)
+    if not preset_data:
+        return False
+
+    # Restore filter state
+    state.sort_by = preset_data.get("sort_by", "downloads")
+    state.sort_direction = preset_data.get("sort_direction", "desc")
+    state.max_size_gb = preset_data.get("max_size_gb")
+    state.min_downloads = preset_data.get("min_downloads")
+    state.tags = preset_data.get("tags", [])
+    state.updated_within_days = preset_data.get("updated_within_days")
+
+    # v0.3.5 compatibility
+    if hasattr(state, 'param_scale'):
+        state.param_scale = preset_data.get("param_scale")
+    if hasattr(state, 'param_compare'):
+        state.param_compare = preset_data.get("param_compare")
+
+    state.page = 0
+    return True
+
+
+def list_presets() -> dict:
+    """Get all saved presets."""
+    from core import load_user_config
+
+    user_config = load_user_config()
+    return user_config.get('search', {}).get('presets', {})
+
+
+def delete_preset(preset_name: str) -> bool:
+    """Delete a preset."""
+    from core import load_user_config, save_user_config
+
+    user_config = load_user_config()
+    if 'search' not in user_config or 'presets' not in user_config['search']:
+        return False
+
+    if preset_name in user_config['search']['presets']:
+        del user_config['search']['presets'][preset_name]
+        return save_user_config(user_config)
+
+    return False

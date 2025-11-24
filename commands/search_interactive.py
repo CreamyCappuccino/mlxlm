@@ -255,6 +255,16 @@ def parse_slash_command(cmd: str, query: str, state: SearchState, models: list) 
             state.results_per_page = 10
             state.page = 0
             print("✅ Reset to default (10 models per page)")
+            # Ask to save as default
+            save_confirm = input("💾 Save as default? [y/N]: ").strip().lower()
+            if save_confirm in ("y", "yes"):
+                from core import load_user_config, save_user_config
+                user_config = load_user_config()
+                if 'search' not in user_config:
+                    user_config['search'] = {}
+                user_config['search']['default_display_count'] = 10
+                if save_user_config(user_config):
+                    print("✅ Default display count saved (10 models)")
         else:
             try:
                 count = int(count_str)
@@ -262,6 +272,16 @@ def parse_slash_command(cmd: str, query: str, state: SearchState, models: list) 
                     state.results_per_page = count
                     state.page = 0
                     print(f"✅ Display count set to {count}")
+                    # Ask to save as default
+                    save_confirm = input("💾 Save as default? [y/N]: ").strip().lower()
+                    if save_confirm in ("y", "yes"):
+                        from core import load_user_config, save_user_config
+                        user_config = load_user_config()
+                        if 'search' not in user_config:
+                            user_config['search'] = {}
+                        user_config['search']['default_display_count'] = count
+                        if save_user_config(user_config):
+                            print(f"✅ Default display count saved ({count} models)")
                 else:
                     print("❌ Please enter a positive number.")
             except ValueError:
