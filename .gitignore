@@ -77,3 +77,6 @@ TAG_*.md
 
 # Design memos and documentation (not part of release)
 DesignMemo/
+
+# Claude development guide (local only, for Claude Code reference)
+CLAUDE.md
