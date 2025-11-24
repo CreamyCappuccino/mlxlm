@@ -8,8 +8,20 @@ from __future__ import annotations
 from .search import SearchState, COMMON_TAGS
 
 
-def handle_filters(state: SearchState) -> None:
-    """Handle filter and sort menu."""
+def handle_filters(state: SearchState) -> bool:
+    """Handle filter and sort menu.
+
+    Returns:
+        True if any filters/sort settings changed (API re-fetch needed), False otherwise.
+    """
+    # Save initial state to detect changes
+    initial_sort_by = state.sort_by
+    initial_sort_direction = state.sort_direction
+    initial_tags = state.tags.copy()
+    initial_max_size_gb = state.max_size_gb
+    initial_min_downloads = state.min_downloads
+    initial_updated_within_days = state.updated_within_days
+
     # Show current filters and ask if user wants to keep them
     if state.has_filters() or state.sort_by != "downloads":
         print("\n" + "━" * 70)
@@ -63,7 +75,16 @@ def handle_filters(state: SearchState) -> None:
 
         # Exit
         if choice in ("0", "/exit", "exit"):
-            return
+            # Check if any settings changed
+            changed = (
+                state.sort_by != initial_sort_by or
+                state.sort_direction != initial_sort_direction or
+                state.tags != initial_tags or
+                state.max_size_gb != initial_max_size_gb or
+                state.min_downloads != initial_min_downloads or
+                state.updated_within_days != initial_updated_within_days
+            )
+            return changed
 
         # Sort order
         if choice == "1":
@@ -106,7 +127,8 @@ def handle_filters(state: SearchState) -> None:
                 state.sort_by = "downloads"
                 state.sort_direction = "desc"
                 print("\n✅ All filters cleared.")
-                return  # Back to results
+                # Changed, so return True to trigger API re-fetch
+                return True
             continue
 
         print("❌ Invalid choice. Choose 1-7 or 0.")

@@ -60,9 +60,10 @@ def search_interactive(query: str, state: SearchState, models: list) -> None:
             continue
 
         if action == "filters":
-            handle_filters(state)
-            print("\n🔍 Re-searching with new settings...")
-            models = search_huggingface(query, state)
+            needs_refetch = handle_filters(state)
+            if needs_refetch:
+                print("\n🔍 Re-searching with new settings...")
+                models = search_huggingface(query, state)
             state.page = 0
             continue
 
