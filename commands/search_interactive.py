@@ -27,10 +27,10 @@ def search_interactive(query: str, state: SearchState, models: list) -> None:
         # Show menu
         print("\nOptions:")
         print(f"  1-{state.results_per_page}  Show details")
-        print("  n/N   Next page")
-        print("  f/F   Filters & Sort")
-        print("  s/S   New search")
-        print("  d/D   Display count")
+        print("  N     Next page")
+        print("  F     Filters & Sort")
+        print("  S     New search")
+        print("  D     Display count")
         print("  0     Exit")
         print("\n💡 Tip: Use slash commands for quick actions: /search qwen, /display 20, /exit\n")
 

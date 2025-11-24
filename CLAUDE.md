@@ -258,40 +258,73 @@ Before starting work:
   - Feature interactions (e.g., filters + display count together)
 ```
 
-**Implementation Rule: Add Tests Per Phase**
+**Implementation Rule: Add Tests When Adding New Functions**
 
-When implementing a new phase (v0.3.X), create corresponding test file:
+Only create test files when NEW FUNCTIONS are added. Don't add tests for every version if no new functions are introduced.
+
 ```
-Phase implementation → test_search_phase_X.py
-├─ v0.3.1 (refactor): (internal refactoring, existing tests sufficient)
-├─ v0.3.2 (query optional): test_search_phase1.py
-├─ v0.3.3 (menu + slash): test_search_phase2_3.py ← ADD TESTS HERE
-├─ v0.3.4 (config save): test_search_phase4.py
-└─ v0.3.5 (param scale): test_search_phase5.py
+When you add a new function:
+  ✅ Create test file for it (test_search_vX.Y.Z.py or test_function_name.py)
+  ✅ Add tests ONLY for the new function(s)
+  ❌ Don't re-test existing functions (they already have tests or are stable)
+  ❌ Don't run all 49 tests every time (only run new function tests)
+
+Why?
+  - New functions = need quality assurance → create tests
+  - Old functions = already tested/stable → skip redundant testing
+  - GitHub appearance = "test files exist" proves development care
+  - Dev efficiency = avoid running 49 tests for minor changes
 ```
 
-**Example Test Content** (for v0.3.3 / Phase 2-3):
+**Test File Naming:**
+```
+tests/test_search_vX.Y.Z.py
+  └─ For version v0.3.3: test_search_v0.3.3.py
+  └─ For version v0.2.5: test_search_v0.2.5.py
+  └─ Contains tests for NEW functions in that version
+```
+
+**Example Test Content** (for v0.3.3 with new functions):
 ```python
-# tests/test_search_phase2_3.py
+# tests/test_search_v0.3.3.py
+from commands.search_interactive import parse_menu_choice, parse_slash_command
+
 def test_parse_menu_choice_next_page():
     action, param = parse_menu_choice("n", max_display=10)
     assert action == "next_page"
 
 def test_parse_slash_command_search():
+    # /search llama should update query
     result = parse_slash_command("/search llama", query="", state, models=[])
-    assert result[1] == "llama"  # updated query
+    assert result[1] == "llama"
 
 def test_parse_slash_command_display():
-    result = parse_slash_command("/display 20", query="", state, models=[])
+    # /display 20 should set results_per_page to 20
+    parse_slash_command("/display 20", query="", state, models=[])
     assert state.results_per_page == 20
 
-def test_invalid_slash_command():
-    # Should reject old /s, /d commands
-    result = parse_slash_command("/s llama", ...)
-    assert "Unknown command" in output
+def test_parse_slash_command_invalid_old_format():
+    # Old /s, /d commands should not work
+    result = parse_slash_command("/s llama", query="", state, models=[])
+    # Should return None or error, not process
+    assert result is None
 ```
 
-**Principle**: Don't rely on "49/49 PASS" as proof of feature correctness. Always add targeted tests for new interactive features.
+**When to Run Tests:**
+```
+After adding new functions:
+  $ pytest tests/test_search_vX.Y.Z.py -v  # Run only new function tests
+
+Before committing:
+  $ pytest tests/ -v  # Full test suite for safety
+
+Don't need to:
+  - Run all 49 tests for every minor change
+  - Add tests unless you added new functions
+  - Test old stable functions repeatedly
+```
+
+**Principle**: Tests = Quality Assurance + GitHub Credibility. Add them strategically for new code, not for ceremonial "49/49 PASS" results.
 
 ---
 
