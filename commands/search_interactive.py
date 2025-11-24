@@ -32,7 +32,8 @@ def search_interactive(query: str, state: SearchState, models: list) -> None:
         print("  S     New search")
         print("  D     Display count")
         print("  0     Exit")
-        print("\n💡 Tip: Use slash commands for quick actions: /search qwen, /display 20, /exit\n")
+        print("\n💡 Tip: Use slash commands for quick actions:")
+        print("   /search qwen    /display 20    /search reset    /exit\n")
 
         choice = input("Your choice: ").strip()
 
@@ -205,6 +206,14 @@ def parse_slash_command(cmd: str, query: str, state: SearchState, models: list) 
     if cmd in ("/exit", "/quit"):
         print("👋 Bye!")
         sys.exit(0)
+
+    # /search reset - reset query only
+    if cmd == "/search reset":
+        state.page = 0
+        state.query = ""
+        models = search_huggingface("", state)
+        print("✅ Query reset. Showing all models...")
+        return (models, "")
 
     # /search or /s <query> - new search
     if cmd.startswith("/search ") or cmd.startswith("/s "):

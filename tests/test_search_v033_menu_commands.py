@@ -224,3 +224,28 @@ class TestParseSlashCommand:
         """Test that /filter is no longer supported (removed in v0.3.3)."""
         result = parse_slash_command("/filter", "test", search_state, mock_models)
         assert result is None
+
+    def test_parse_slash_command_search_reset(self, search_state, mock_models, monkeypatch):
+        """Test /search reset to reset query only."""
+        # Mock search_huggingface to track calls
+        search_calls = []
+        def mock_search_hf(query, state):
+            search_calls.append((query, state.query))
+            return mock_models
+
+        monkeypatch.setattr("commands.search_interactive.search_huggingface", mock_search_hf)
+
+        # Set initial query
+        search_state.query = "llama"
+        search_state.page = 2
+
+        # Call /search reset
+        result = parse_slash_command("/search reset", "llama", search_state, mock_models)
+
+        # Check that query was reset
+        assert result is not None
+        assert result == (mock_models, "")
+        assert search_state.query == ""
+        assert search_state.page == 0
+        assert len(search_calls) == 1
+        assert search_calls[0][0] == ""  # empty query passed to search_huggingface
