@@ -234,6 +234,67 @@ Before starting work:
 
 ## 💡 Code Quality & Best Practices
 
+### Testing Strategy & Coverage
+
+**Important Reality Check**: All existing tests (49/49) PASS, but bugs still appear in production/interactive features.
+
+**Why?**
+- Current tests cover: CLI routing, argument parsing, core utilities, alias management
+- Current tests do NOT cover: Interactive features, slash commands, menu interactions, user input parsing
+- Test suite is comprehensive for *utility* functions but lacks *integration* and *interaction* tests
+
+**Test Coverage Gap:**
+```
+✅ Covered:
+  - test_cli.py (15): Command routing, argument parsing, error handling
+  - test_commands.py (12): List, show, alias, doctor operations
+  - test_core.py (22): Alias loading, name resolution, config, rendering, helpers
+
+❌ NOT Covered:
+  - Interactive search menu (search_interactive.py)
+  - Slash command parsing (/search, /display, /exit)
+  - Menu choice parsing (n/f/s/d/0 inputs)
+  - User input validation and edge cases
+  - Feature interactions (e.g., filters + display count together)
+```
+
+**Implementation Rule: Add Tests Per Phase**
+
+When implementing a new phase (v0.3.X), create corresponding test file:
+```
+Phase implementation → test_search_phase_X.py
+├─ v0.3.1 (refactor): (internal refactoring, existing tests sufficient)
+├─ v0.3.2 (query optional): test_search_phase1.py
+├─ v0.3.3 (menu + slash): test_search_phase2_3.py ← ADD TESTS HERE
+├─ v0.3.4 (config save): test_search_phase4.py
+└─ v0.3.5 (param scale): test_search_phase5.py
+```
+
+**Example Test Content** (for v0.3.3 / Phase 2-3):
+```python
+# tests/test_search_phase2_3.py
+def test_parse_menu_choice_next_page():
+    action, param = parse_menu_choice("n", max_display=10)
+    assert action == "next_page"
+
+def test_parse_slash_command_search():
+    result = parse_slash_command("/search llama", query="", state, models=[])
+    assert result[1] == "llama"  # updated query
+
+def test_parse_slash_command_display():
+    result = parse_slash_command("/display 20", query="", state, models=[])
+    assert state.results_per_page == 20
+
+def test_invalid_slash_command():
+    # Should reject old /s, /d commands
+    result = parse_slash_command("/s llama", ...)
+    assert "Unknown command" in output
+```
+
+**Principle**: Don't rely on "49/49 PASS" as proof of feature correctness. Always add targeted tests for new interactive features.
+
+---
+
 ### External Library Usage
 
 When integrating external libraries (e.g., prompt-toolkit, MLX), follow these principles:
