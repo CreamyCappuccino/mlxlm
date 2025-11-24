@@ -380,8 +380,8 @@ NOTES:
     user_config = load_user_config()
     search_config = user_config.get('search', {})
 
-    # Apply saved default_display_count if limit is at default (7)
-    if limit == 7:  # Default value indicates no explicit --limit flag
+    # Apply saved default_display_count if limit is at default (10)
+    if limit == 10:  # Default value indicates no explicit --limit flag
         limit = search_config.get('default_display_count', 10)
 
     # Initialize state

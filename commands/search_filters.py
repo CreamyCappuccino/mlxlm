@@ -457,27 +457,32 @@ def handle_updated_filter(state: SearchState) -> None:
 def auto_generate_preset_name(state: SearchState) -> str:
     """
     Auto-generate a meaningful preset name from filter state (v0.3.5 compatible).
+    Includes all active filter information for clarity.
 
-    Priority:
-    1. Tags (first tag)
-    2. Size (max_size_gb)
-    3. Param scale (param_scale with comparison)
-    4. Sort direction (if not desc)
-    5. Fallback: timestamp-based name
+    Order: tags → size → min_downloads → updated_days → param_scale → sort_by → sort_direction
+    Fallback: timestamp-based name if no filters
     """
     from datetime import datetime
 
     parts = []
 
-    # 1. Tags (highest priority)
+    # 1. All tags (joined with underscore)
     if state.tags:
-        parts.append(state.tags[0].lower())
+        parts.append("_".join(tag.lower() for tag in state.tags))
 
     # 2. Size
     if state.max_size_gb:
         parts.append(f"{int(state.max_size_gb)}gb")
 
-    # 3. Param scale (v0.3.5 compatibility)
+    # 3. Min downloads
+    if state.min_downloads:
+        parts.append(f"{int(state.min_downloads)}downloads")
+
+    # 4. Updated within days
+    if state.updated_within_days:
+        parts.append(f"updated{int(state.updated_within_days)}d")
+
+    # 5. Param scale (v0.3.5 compatibility)
     if hasattr(state, 'param_scale') and state.param_scale:
         param_str = f"{state.param_scale}b"
         if hasattr(state, 'param_compare'):
@@ -487,7 +492,11 @@ def auto_generate_preset_name(state: SearchState) -> str:
                 param_str += "_over"
         parts.append(param_str)
 
-    # 4. Sort direction (if not default desc)
+    # 6. Sort order (if not default downloads)
+    if state.sort_by != "downloads":
+        parts.append(f"by_{state.sort_by}")
+
+    # 7. Sort direction (if not default desc)
     if state.sort_direction != "desc":
         parts.append(state.sort_direction)
 

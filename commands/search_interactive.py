@@ -43,6 +43,7 @@ def search_interactive(query: str, state: SearchState, models: list) -> None:
             result = parse_slash_command(choice, query, state, models)
             if result is not None:
                 models, query = result
+                state.query = query
             continue
 
         # Parse menu choice
@@ -221,8 +222,8 @@ def parse_slash_command(cmd: str, query: str, state: SearchState, models: list) 
         print("👋 Bye!")
         sys.exit(0)
 
-    # /search reset - reset query only
-    if cmd == "/search reset":
+    # /search reset or /s reset - reset query only
+    if cmd in ("/search reset", "/s reset"):
         state.page = 0
         state.query = ""
         models = search_huggingface("", state)

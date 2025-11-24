@@ -234,6 +234,12 @@ Before starting work:
 
 ## 💡 Code Quality & Best Practices
 
+### Documentation Policy
+
+- **CLAUDE.md**: Generic guidelines and templates only (no project-specific details)
+- **Memory system**: Project history, version-specific plans, implementation results
+- **Why?** CLAUDE.md is a reusable template for future projects; memory preserves actual project context
+
 ### Testing Strategy & Coverage
 
 **Important Reality Check**: All existing tests (49/49) PASS, but bugs still appear in production/interactive features.
@@ -279,10 +285,29 @@ Why?
 **Test File Naming:**
 ```
 tests/test_search_vX.Y.Z.py
-  └─ For version v0.3.3: test_search_v0.3.3.py
-  └─ For version v0.2.5: test_search_v0.2.5.py
-  └─ Contains tests for NEW functions in that version
+  └─ Contains tests for NEW functions added in that version
+  └─ Each version gets its own test file
 ```
+
+**Cumulative Test Design (Test File Inheritance)**
+
+When implementing a new version with new functions:
+
+1. **Copy Previous Version's Test File**
+   - Rename: `test_search_vX.Y.Z.py` → `test_search_vX.Y.(Z+1).py`
+   - Keep all existing test classes and functions from previous version
+   - Benefit: Maintains regression protection for stable/old functions
+
+2. **Add New Tests Only for New Functions**
+   - Add test classes for newly added functions
+   - Don't modify or re-test existing test classes
+   - Result: One comprehensive test file per version
+
+3. **Why This Approach?**
+   - Avoids test duplication across multiple files
+   - Clear ownership: version X tests = test_search_vX.Y.Z.py
+   - Regression protection: old function tests are preserved
+   - Single source of truth for version functionality
 
 **Example Test Content** (for v0.3.3 with new functions):
 ```python
