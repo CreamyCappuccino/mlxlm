@@ -60,6 +60,8 @@ class SearchState:
         self.min_downloads: Optional[int] = None
         self.tags: list[str] = []
         self.updated_within_days: Optional[int] = None
+        self.param_scale: Optional[int] = None  # v0.3.5: parameter scale (7, 13, 30)
+        self.param_compare: str = "eq"  # eq, lt, gt
         self.page: int = 0
         self.results_per_page: int = 10
 
@@ -69,7 +71,8 @@ class SearchState:
             self.max_size_gb or
             self.min_downloads or
             self.tags or
-            self.updated_within_days
+            self.updated_within_days or
+            self.param_scale
         )
 
     def get_filter_summary(self) -> list[str]:
@@ -83,6 +86,9 @@ class SearchState:
             filters.append(f"Tags: {', '.join(self.tags)}")
         if self.updated_within_days:
             filters.append(f"Updated within: {self.updated_within_days} days")
+        if self.param_scale:
+            op_symbol = {"eq": "=", "lt": "<", "gt": ">"}[self.param_compare]
+            filters.append(f"Parameters: {op_symbol} {self.param_scale}B")
         return filters
 
 

@@ -87,6 +87,14 @@ For detailed options and more examples: mlxlm search <query> --help-detail
         help="Updated within X days"
     )
     search_parser.add_argument(
+        "--param-scale", type=int, metavar="N",
+        help="Filter by parameter scale (e.g., 7, 13, 30 for 7B, 13B, 30B)"
+    )
+    search_parser.add_argument(
+        "--param-compare", choices=["eq", "lt", "gt"], default="eq",
+        help="Comparison for parameter scale: eq (=), lt (<), gt (>) (default: eq)"
+    )
+    search_parser.add_argument(
         "--sort", choices=["downloads", "updated", "size"], default="downloads",
         help="Sort by downloads/updated/size (default: downloads)"
     )
