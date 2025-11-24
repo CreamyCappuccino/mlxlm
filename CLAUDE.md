@@ -293,6 +293,40 @@ When integrating external libraries (e.g., prompt-toolkit, MLX), follow these pr
 
 ## 📌 Memory Management for Claude Instances
 
+### MLX-LM Project Memory Structure
+
+**Three core memories for version management:**
+- **MM259**: Master release plan (all versions v0.1.0-v0.3.5+)
+  - Single source of truth for what's planned
+  - Updated when new versions are added to roadmap
+- **MM303**: Implementation results summary (v0.1.0-current)
+  - Tracks completed work and results
+  - Appended/updated as each version completes
+- **MM290**: Navigation hub (references MM259 only)
+  - Minimal content: points to MM259 and version memories
+  - Used to understand current state
+  - Referenced by all version-specific memories
+
+**How to use each session:**
+1. Check MM290 → understand current progress and related memories
+2. Implement Phase N (code changes)
+3. Create/update version memory (MM308, MM309, etc.) with results
+4. Update MM303 with completed phase (append, not replace)
+5. Update MM259 if planning changes (append rationale)
+
+**Memory growth management:**
+- MM259: Append new planned versions at bottom (never delete old ones)
+- MM303: Append completed work (maintains complete history)
+- MM290: Keep minimal, update only when navigation changes
+- Phase details: Create dedicated memory per phase (MM308+)
+
+**Linking rules:**
+- Version result memories → link to MM290 + MM303
+- Phase detail memories → link to MM290 only
+- Avoid forcing chains; link only when there's actual dependency
+
+### General Hub Memory Pattern
+
 **Hub Memory**: Central navigation point, links to plan only
 - Example: MM290 → MM259 (plan)
 
