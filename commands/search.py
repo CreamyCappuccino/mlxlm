@@ -187,7 +187,7 @@ def search_huggingface(query: str, state: SearchState) -> list[dict]:
             "sort": hf_sort,
             "direction": hf_direction,
             "limit": 100,  # Get more for filtering
-            "expand": ["lastModified", "safetensors"],  # Request expandable fields
+            "expand": ["lastModified", "safetensors", "tags"],  # Request expandable fields
         }
 
         # Add tag filters
@@ -235,8 +235,14 @@ def search_huggingface(query: str, state: SearchState) -> list[dict]:
 
         # Client-side sorting for "size" (HF API doesn't support it)
         if state.sort_by == "size":
+            # Sort by actual size, pushing models with unknown size to the end
+            def size_sort_key(m):
+                if m.safetensors and m.safetensors.get("total"):
+                    return m.safetensors.get("total", 0)
+                return float('inf')  # Unknown size goes to the end
+
             filtered_models.sort(
-                key=lambda m: m.safetensors.get("total", float('inf')) if m.safetensors else float('inf'),
+                key=size_sort_key,
                 reverse=(state.sort_direction == "desc")
             )
 
