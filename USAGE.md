@@ -145,7 +145,8 @@ Shows concise option summary and Quick Start examples.
 
 **Detailed Help:**
 ```bash
-mlxlm search llama --help-detail
+mlxlm search --help-detail          # Works without query
+mlxlm search llama --help-detail    # Or with query
 ```
 Shows comprehensive documentation including all options, 8 practical usage examples, output modes, and technical notes.
 

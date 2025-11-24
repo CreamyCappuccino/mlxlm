@@ -271,6 +271,8 @@ When integrating external libraries (e.g., prompt-toolkit, MLX), follow these pr
 - `USAGE.md`: User documentation
 - `CONTRIBUTING.md`: Contribution guidelines
 
+**Tip**: Use `mlxlm search --help-detail` (without query) to get comprehensive search documentation. Works with or without a query argument.
+
 ---
 
 ## 📌 Memory Management for Claude Instances
