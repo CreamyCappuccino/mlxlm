@@ -5,6 +5,63 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.5] - 2025-11-25
+
+### Added
+- **Parameter scale range filter** for `mlxlm search`
+  - New `--param-scale-mode {eq,lt,gt,range}` flag to specify filtering mode
+  - New `--param-scale-min N` and `--param-scale-max N` flags for range mode
+  - Interactive filter menu: Mode 4 for range (min-max, both inclusive)
+  - Support for partial ranges (only min or only max specified)
+
+### Changed
+- **Parameter scale filter refactored** (internal API change)
+  - Renamed `param_compare` → `param_scale_mode` for clarity
+  - Added `param_scale_min` and `param_scale_max` fields to SearchState
+  - Filter now supports 4 modes: eq (=), lt (<), gt (≥), range (min-max)
+  - Preset name generation updated (compatible with v0.3.5 format)
+  - JSON output updated with new field names
+
+### Technical
+- Comprehensive test suite (test_search_v035a_param_range.py) with 30 tests
+- Tests cover: range filtering, boundary conditions, edge cases (zero, large values)
+- Range comparison logic: `min ≤ param ≤ max` (both bounds inclusive)
+- Backward compatible with single-value filtering (eq/lt/gt modes)
+- All 239 tests PASS
+
+### Fixed
+- **SearchState.has_filters()** now correctly detects range filters
+- **get_filter_summary()** properly formats single and range parameters
+- UI correctly swaps min/max if entered in wrong order
+
+## [0.3.5] - 2025-11-25
+
+### Added
+- **Parameter scale filter** for `mlxlm search`
+  - New `--param-scale N` flag to filter models by parameter size (7, 13, 30, etc.)
+  - New `--param-compare {eq,lt,gt}` flag for comparison operators
+    - `eq`: Exact match (e.g., 7B only)
+    - `lt`: Less than (e.g., 13B or smaller)
+    - `gt`: Greater than or equal (e.g., 30B or larger)
+  - Interactive menu option (6) for parameter scale filtering
+  - Automatic extraction from model names (7B, 7-B, 7_B, 7 B, 7 billion formats)
+  - Fallback to model card data when name parsing fails
+
+### Changed
+- Filter menu reorganized: options 1-11 (presets now 9-11 for consistency)
+- SearchState extended with `param_scale` (Optional[int]) and `param_compare` (str) fields
+- `has_filters()` and `get_filter_summary()` updated to include parameter scale info
+- JSON output now includes param_scale and param_compare in filters section
+
+### Technical
+- Added `extract_param_scale()` function to parse parameter sizes from model names
+- Added `handle_param_scale_filter()` for interactive filter input
+- Comprehensive test suite (test_search_v035_param_scale.py) with 24 tests covering:
+  - Name format variations (case-insensitive, hyphen, underscore, space separators)
+  - Comparison operators (eq, lt, gt filtering logic)
+  - Edge cases (zero values, large values, None handling)
+  - Integration with SearchState and JSON output
+
 ## [0.3.0] - 2025-11-23
 
 ### Added

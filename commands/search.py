@@ -60,19 +60,25 @@ class SearchState:
         self.min_downloads: Optional[int] = None
         self.tags: list[str] = []
         self.updated_within_days: Optional[int] = None
-        self.param_scale: Optional[int] = None  # v0.3.5: parameter scale (7, 13, 30)
-        self.param_compare: str = "eq"  # eq, lt, gt
+        self.param_scale: Optional[int] = None  # v0.3.5: parameter scale single value (7, 13, 30)
+        self.param_scale_mode: str = "eq"  # eq, lt, gt, range (v0.3.5)
+        self.param_scale_min: Optional[int] = None  # v0.3.5: min for range mode
+        self.param_scale_max: Optional[int] = None  # v0.3.5: max for range mode
         self.page: int = 0
         self.results_per_page: int = 10
 
     def has_filters(self) -> bool:
         """Check if any filters are active."""
+        param_filter_active = (
+            self.param_scale or
+            (self.param_scale_mode == "range" and (self.param_scale_min or self.param_scale_max))
+        )
         return bool(
             self.max_size_gb or
             self.min_downloads or
             self.tags or
             self.updated_within_days or
-            self.param_scale
+            param_filter_active
         )
 
     def get_filter_summary(self) -> list[str]:
@@ -86,8 +92,10 @@ class SearchState:
             filters.append(f"Tags: {', '.join(self.tags)}")
         if self.updated_within_days:
             filters.append(f"Updated within: {self.updated_within_days} days")
-        if self.param_scale:
-            op_symbol = {"eq": "=", "lt": "<", "gt": ">"}[self.param_compare]
+        if self.param_scale_mode == "range" and (self.param_scale_min is not None or self.param_scale_max is not None):
+            filters.append(f"Parameters: {self.param_scale_min}B - {self.param_scale_max}B")
+        elif self.param_scale and self.param_scale_mode in ["eq", "lt", "gt"]:
+            op_symbol = {"eq": "=", "lt": "<", "gt": ">"}[self.param_scale_mode]
             filters.append(f"Parameters: {op_symbol} {self.param_scale}B")
         return filters
 
@@ -243,16 +251,25 @@ def search_huggingface(query: str, state: SearchState) -> list[dict]:
                     pass
 
             # Parameter scale filter (v0.3.5)
-            if state.param_scale:
+            if state.param_scale_mode == "range" and (state.param_scale_min or state.param_scale_max):
                 model_params = extract_param_scale(model.id, getattr(model, 'cardData', None))
                 if model_params is None:
                     continue  # Models with unknown parameter scale are excluded when param filter is active
 
-                if state.param_compare == "eq" and model_params != state.param_scale:
+                if state.param_scale_min and model_params < state.param_scale_min:
                     continue
-                elif state.param_compare == "lt" and model_params >= state.param_scale:
+                if state.param_scale_max and model_params > state.param_scale_max:
                     continue
-                elif state.param_compare == "gt" and model_params <= state.param_scale:
+            elif state.param_scale and state.param_scale_mode in ["eq", "lt", "gt"]:
+                model_params = extract_param_scale(model.id, getattr(model, 'cardData', None))
+                if model_params is None:
+                    continue  # Models with unknown parameter scale are excluded when param filter is active
+
+                if state.param_scale_mode == "eq" and model_params != state.param_scale:
+                    continue
+                elif state.param_scale_mode == "lt" and model_params >= state.param_scale:
+                    continue
+                elif state.param_scale_mode == "gt" and model_params <= state.param_scale:
                     continue
 
             filtered_models.append(model)
@@ -318,7 +335,9 @@ def search_main(
     min_downloads: Optional[int] = None,
     updated_within: Optional[int] = None,
     param_scale: Optional[int] = None,
-    param_compare: str = "eq",
+    param_scale_mode: str = "eq",
+    param_scale_min: Optional[int] = None,
+    param_scale_max: Optional[int] = None,
     sort: str = "downloads",
     limit: int = 7,
     no_interactive: bool = False,
@@ -423,7 +442,14 @@ NOTES:
         state.updated_within_days = updated_within
     if param_scale:
         state.param_scale = param_scale
-        state.param_compare = param_compare
+        state.param_scale_mode = param_scale_mode
+    if param_scale_min:
+        state.param_scale_min = param_scale_min
+        state.param_scale_mode = "range"
+    if param_scale_max:
+        state.param_scale_max = param_scale_max
+        if state.param_scale_mode != "range":
+            state.param_scale_mode = "range"
 
     # Perform search
     models = search_huggingface(query, state)
@@ -431,18 +457,25 @@ NOTES:
     # JSON output mode (highest priority)
     if json_output:
         import json as json_module
+        filters_dict = {
+            "sort_by": state.sort_by,
+            "max_size_gb": state.max_size_gb,
+            "min_downloads": state.min_downloads,
+            "tags": state.tags,
+            "updated_within_days": state.updated_within_days,
+        }
+        if state.param_scale_mode == "range":
+            filters_dict["param_scale_mode"] = "range"
+            filters_dict["param_scale_min"] = state.param_scale_min
+            filters_dict["param_scale_max"] = state.param_scale_max
+        else:
+            filters_dict["param_scale"] = state.param_scale
+            filters_dict["param_scale_mode"] = state.param_scale_mode
+
         output = {
             "query": query,
             "total": len(models),
-            "filters": {
-                "sort_by": state.sort_by,
-                "max_size_gb": state.max_size_gb,
-                "min_downloads": state.min_downloads,
-                "tags": state.tags,
-                "updated_within_days": state.updated_within_days,
-                "param_scale": state.param_scale,
-                "param_compare": state.param_compare,
-            },
+            "filters": filters_dict,
             "results": [
                 {
                     "repo_id": model.id,

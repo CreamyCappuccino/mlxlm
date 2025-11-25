@@ -325,7 +325,7 @@ class TestAutoGeneratePresetName:
         """Test param_scale with 'lt' comparison."""
         state = SearchState()
         state.param_scale = 13
-        state.param_compare = "lt"
+        state.param_scale_mode = "lt"
         name = auto_generate_preset_name(state)
         assert name == "13b_under"
 
@@ -333,7 +333,7 @@ class TestAutoGeneratePresetName:
         """Test param_scale with 'gt' comparison."""
         state = SearchState()
         state.param_scale = 30
-        state.param_compare = "gt"
+        state.param_scale_mode = "gt"
         name = auto_generate_preset_name(state)
         assert name == "30b_over"
 

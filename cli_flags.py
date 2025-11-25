@@ -91,8 +91,16 @@ For detailed options and more examples: mlxlm search <query> --help-detail
         help="Filter by parameter scale (e.g., 7, 13, 30 for 7B, 13B, 30B)"
     )
     search_parser.add_argument(
-        "--param-compare", choices=["eq", "lt", "gt"], default="eq",
-        help="Comparison for parameter scale: eq (=), lt (<), gt (>) (default: eq)"
+        "--param-scale-mode", choices=["eq", "lt", "gt", "range"], default="eq",
+        help="Mode for parameter scale: eq (=), lt (<), gt (>), range (min-max) (default: eq)"
+    )
+    search_parser.add_argument(
+        "--param-scale-min", type=int, metavar="N",
+        help="Minimum parameter scale for range mode (e.g., 7)"
+    )
+    search_parser.add_argument(
+        "--param-scale-max", type=int, metavar="N",
+        help="Maximum parameter scale for range mode (e.g., 30)"
     )
     search_parser.add_argument(
         "--sort", choices=["downloads", "updated", "size"], default="downloads",

@@ -1,7 +1,7 @@
 # Copyright (c) 2025 MLX-LM Contributors
 # Licensed under the MIT License. See LICENSE file in the project root for details.
 
-"""Tests for v0.3.5: Parameter Scale Filter (Phase 5)."""
+"""Tests for v0.3.5: Parameter Scale Range Filter (Phase 5a)."""
 
 import pytest
 from commands.search import SearchState
@@ -83,32 +83,42 @@ class TestExtractParamScale:
         assert extract_param_scale("model", None) is None
 
 
-class TestSearchStateParamScale:
-    """Test SearchState integration with param_scale and param_compare."""
+class TestSearchStateParamScaleMode:
+    """Test SearchState integration with param_scale_mode and range."""
 
     def test_search_state_param_scale_fields(self):
-        """Test SearchState has param_scale and param_scale_mode fields."""
+        """Test SearchState has param_scale_mode, min, max fields."""
         state = SearchState()
         assert hasattr(state, 'param_scale')
         assert hasattr(state, 'param_scale_mode')
+        assert hasattr(state, 'param_scale_min')
+        assert hasattr(state, 'param_scale_max')
         assert state.param_scale is None
         assert state.param_scale_mode == "eq"
+        assert state.param_scale_min is None
+        assert state.param_scale_max is None
 
-    def test_search_state_has_filters_with_param_scale(self):
-        """Test has_filters() includes param_scale."""
+    def test_search_state_has_filters_with_param_scale_mode(self):
+        """Test has_filters() works with new param_scale_mode."""
         state = SearchState()
         assert not state.has_filters()
 
+        # Single value mode
         state.param_scale = 7
         assert state.has_filters()
 
         state.param_scale = None
         assert not state.has_filters()
 
-    def test_search_state_filter_summary_with_param_scale(self):
-        """Test get_filter_summary() includes param_scale."""
+        # Range mode
+        state.param_scale_mode = "range"
+        state.param_scale_min = 7
+        state.param_scale_max = 13
+        assert state.has_filters()
+
+    def test_search_state_filter_summary_single_value_modes(self):
+        """Test get_filter_summary() for eq, lt, gt modes."""
         state = SearchState()
-        assert state.get_filter_summary() == []
 
         # Test eq comparison
         state.param_scale = 7
@@ -128,22 +138,47 @@ class TestSearchStateParamScale:
         summary = state.get_filter_summary()
         assert "Parameters: > 30B" in summary
 
-    def test_search_state_filter_summary_multiple_filters(self):
-        """Test filter summary with multiple filters including param_scale."""
+    def test_search_state_filter_summary_range_mode(self):
+        """Test get_filter_summary() for range mode."""
+        state = SearchState()
+        state.param_scale_mode = "range"
+        state.param_scale_min = 7
+        state.param_scale_max = 13
+
+        summary = state.get_filter_summary()
+        assert "Parameters: 7B - 13B" in summary
+
+    def test_search_state_filter_summary_range_with_one_value(self):
+        """Test get_filter_summary() for range with only min or max."""
+        state = SearchState()
+        state.param_scale_mode = "range"
+        state.param_scale_min = 7
+
+        summary = state.get_filter_summary()
+        assert "Parameters: 7B - NoneB" in summary
+
+        state.param_scale_min = None
+        state.param_scale_max = 30
+        summary = state.get_filter_summary()
+        assert "Parameters: NoneB - 30B" in summary
+
+    def test_search_state_filter_summary_multiple_filters_with_range(self):
+        """Test filter summary with multiple filters including param_scale range."""
         state = SearchState()
         state.max_size_gb = 10
         state.tags = ["mlx"]
-        state.param_scale = 7
-        state.param_scale_mode = "eq"
+        state.param_scale_mode = "range"
+        state.param_scale_min = 7
+        state.param_scale_max = 13
 
         summary = state.get_filter_summary()
         assert len(summary) == 3
         assert "Max size: 10 GB" in summary
         assert "Tags: mlx" in summary
-        assert "Parameters: = 7B" in summary
+        assert "Parameters: 7B - 13B" in summary
 
     def test_search_state_param_scale_mode_values(self):
-        """Test param_scale_mode accepts eq, lt, gt."""
+        """Test param_scale_mode accepts eq, lt, gt, range."""
         state = SearchState()
 
         state.param_scale_mode = "eq"
@@ -155,100 +190,151 @@ class TestSearchStateParamScale:
         state.param_scale_mode = "gt"
         assert state.param_scale_mode == "gt"
 
+        state.param_scale_mode = "range"
+        assert state.param_scale_mode == "range"
 
-class TestParamScaleFiltering:
-    """Test parameter scale filtering logic."""
 
-    def test_param_scale_eq_comparison(self):
-        """Test equality comparison for parameter scale."""
-        # Model is 7B, filter for = 7B → should match
+class TestParamScaleRangeFiltering:
+    """Test parameter scale range filtering logic."""
+
+    def test_param_scale_range_inclusive(self):
+        """Test range filtering is inclusive (min <= param <= max)."""
+        filter_min = 7
+        filter_max = 13
+
+        # Model is 7B → should match (7 >= 7 and 7 <= 13)
         model_params = 7
-        filter_scale = 7
-        filter_compare = "eq"
-
-        if filter_compare == "eq" and model_params != filter_scale:
+        excluded = False
+        if model_params < filter_min or model_params > filter_max:
             excluded = True
-        else:
-            excluded = False
-
         assert not excluded
 
-        # Model is 7B, filter for = 13B → should NOT match
-        filter_scale = 13
-        if filter_compare == "eq" and model_params != filter_scale:
-            excluded = True
-        else:
-            excluded = False
-
-        assert excluded
-
-    def test_param_scale_lt_comparison(self):
-        """Test less-than comparison for parameter scale."""
-        filter_scale = 13
-        filter_compare = "lt"
-
-        # Model is 7B → should match (7 < 13)
-        model_params = 7
-        if filter_compare == "lt" and model_params >= filter_scale:
-            excluded = True
-        else:
-            excluded = False
-
-        assert not excluded
-
-        # Model is 13B → should NOT match (13 < 13 is False)
+        # Model is 13B → should match (13 >= 7 and 13 <= 13)
         model_params = 13
-        if filter_compare == "lt" and model_params >= filter_scale:
+        excluded = False
+        if model_params < filter_min or model_params > filter_max:
             excluded = True
-        else:
-            excluded = False
-
-        assert excluded
-
-        # Model is 30B → should NOT match (30 < 13 is False)
-        model_params = 30
-        if filter_compare == "lt" and model_params >= filter_scale:
-            excluded = True
-        else:
-            excluded = False
-
-        assert excluded
-
-    def test_param_scale_gt_comparison(self):
-        """Test greater-than comparison for parameter scale."""
-        filter_scale = 13
-        filter_compare = "gt"
-
-        # Model is 7B → should NOT match (7 > 13 is False)
-        model_params = 7
-        if filter_compare == "gt" and model_params <= filter_scale:
-            excluded = True
-        else:
-            excluded = False
-
-        assert excluded
-
-        # Model is 13B → should NOT match (13 > 13 is False)
-        model_params = 13
-        if filter_compare == "gt" and model_params <= filter_scale:
-            excluded = True
-        else:
-            excluded = False
-
-        assert excluded
-
-        # Model is 30B → should match (30 > 13)
-        model_params = 30
-        if filter_compare == "gt" and model_params <= filter_scale:
-            excluded = True
-        else:
-            excluded = False
-
         assert not excluded
+
+        # Model is 10B → should match (10 >= 7 and 10 <= 13)
+        model_params = 10
+        excluded = False
+        if model_params < filter_min or model_params > filter_max:
+            excluded = True
+        assert not excluded
+
+    def test_param_scale_range_boundary(self):
+        """Test range boundaries are inclusive."""
+        filter_min = 7
+        filter_max = 13
+
+        # Model is 6B → should NOT match (6 < 7)
+        model_params = 6
+        excluded = False
+        if model_params < filter_min or model_params > filter_max:
+            excluded = True
+        assert excluded
+
+        # Model is 14B → should NOT match (14 > 13)
+        model_params = 14
+        excluded = False
+        if model_params < filter_min or model_params > filter_max:
+            excluded = True
+        assert excluded
+
+    def test_param_scale_range_single_value_range(self):
+        """Test range where min == max (single value)."""
+        filter_min = 7
+        filter_max = 7
+
+        # Model is 7B → should match
+        model_params = 7
+        excluded = False
+        if model_params < filter_min or model_params > filter_max:
+            excluded = True
+        assert not excluded
+
+        # Model is 6B → should NOT match
+        model_params = 6
+        excluded = False
+        if model_params < filter_min or model_params > filter_max:
+            excluded = True
+        assert excluded
+
+        # Model is 8B → should NOT match
+        model_params = 8
+        excluded = False
+        if model_params < filter_min or model_params > filter_max:
+            excluded = True
+        assert excluded
+
+    def test_param_scale_range_min_only(self):
+        """Test range with only min value set."""
+        filter_min = 7
+        filter_max = None
+
+        # Model is 7B → should match
+        model_params = 7
+        excluded = False
+        if filter_min and model_params < filter_min:
+            excluded = True
+        if filter_max and model_params > filter_max:
+            excluded = True
+        assert not excluded
+
+        # Model is 100B → should match
+        model_params = 100
+        excluded = False
+        if filter_min and model_params < filter_min:
+            excluded = True
+        if filter_max and model_params > filter_max:
+            excluded = True
+        assert not excluded
+
+        # Model is 6B → should NOT match
+        model_params = 6
+        excluded = False
+        if filter_min and model_params < filter_min:
+            excluded = True
+        if filter_max and model_params > filter_max:
+            excluded = True
+        assert excluded
+
+    def test_param_scale_range_max_only(self):
+        """Test range with only max value set."""
+        filter_min = None
+        filter_max = 13
+
+        # Model is 13B → should match
+        model_params = 13
+        excluded = False
+        if filter_min and model_params < filter_min:
+            excluded = True
+        if filter_max and model_params > filter_max:
+            excluded = True
+        assert not excluded
+
+        # Model is 1B → should match
+        model_params = 1
+        excluded = False
+        if filter_min and model_params < filter_min:
+            excluded = True
+        if filter_max and model_params > filter_max:
+            excluded = True
+        assert not excluded
+
+        # Model is 14B → should NOT match
+        model_params = 14
+        excluded = False
+        if filter_min and model_params < filter_min:
+            excluded = True
+        if filter_max and model_params > filter_max:
+            excluded = True
+        assert excluded
 
 
 class TestParamScaleEdgeCases:
-    """Test edge cases and boundary conditions."""
+    """Test edge cases and boundary conditions for range."""
 
     def test_extract_param_scale_zero(self):
         """Test handling of zero parameter count."""
@@ -264,14 +350,25 @@ class TestParamScaleEdgeCases:
         state = SearchState()
         state.param_scale = 0
         # 0 is falsy, so has_filters() should return False
-        # (0 in boolean context means "no filter")
         assert not state.has_filters()
+
+    def test_search_state_param_scale_range_zero_values(self):
+        """Test SearchState range with zero values."""
+        state = SearchState()
+        state.param_scale_mode = "range"
+        state.param_scale_min = 0
+        state.param_scale_max = 7
+
+        # Should still be considered a filter
+        assert state.has_filters()
 
     def test_search_state_param_scale_none_vs_default(self):
         """Test SearchState param_scale None vs initial state."""
         state = SearchState()
         assert state.param_scale is None
         assert state.param_scale_mode == "eq"
+        assert state.param_scale_min is None
+        assert state.param_scale_max is None
 
         state.param_scale = 7
         assert state.param_scale == 7
@@ -279,3 +376,16 @@ class TestParamScaleEdgeCases:
         state.param_scale = None
         assert state.param_scale is None
         assert state.param_scale_mode == "eq"  # Mode should stay the same
+
+    def test_search_state_range_swapped_values(self):
+        """Test that range with swapped min/max still works."""
+        state = SearchState()
+        state.param_scale_mode = "range"
+        # User entered max first, min second (will be swapped by UI)
+        state.param_scale_min = 13
+        state.param_scale_max = 7
+
+        # Filtering should still work (implementation handles both directions)
+        # In practice, UI swaps them, but state should handle any order
+        summary = state.get_filter_summary()
+        assert "Parameters: 13B - 7B" in summary

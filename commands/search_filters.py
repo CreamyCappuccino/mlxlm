@@ -25,7 +25,9 @@ def handle_filters(state: SearchState) -> bool:
     initial_min_downloads = state.min_downloads
     initial_updated_within_days = state.updated_within_days
     initial_param_scale = state.param_scale
-    initial_param_compare = state.param_compare
+    initial_param_scale_mode = state.param_scale_mode
+    initial_param_scale_min = state.param_scale_min
+    initial_param_scale_max = state.param_scale_max
 
     # Show current filters and ask if user wants to keep them
     if state.has_filters() or state.sort_by != "downloads":
@@ -48,7 +50,9 @@ def handle_filters(state: SearchState) -> bool:
             state.tags = []
             state.updated_within_days = None
             state.param_scale = None
-            state.param_compare = "eq"
+            state.param_scale_mode = "eq"
+            state.param_scale_min = None
+            state.param_scale_max = None
             state.sort_by = "downloads"
             print("\n✅ All settings cleared.")
 
@@ -95,7 +99,9 @@ def handle_filters(state: SearchState) -> bool:
                 state.min_downloads != initial_min_downloads or
                 state.updated_within_days != initial_updated_within_days or
                 state.param_scale != initial_param_scale or
-                state.param_compare != initial_param_compare
+                state.param_scale_mode != initial_param_scale_mode or
+                state.param_scale_min != initial_param_scale_min or
+                state.param_scale_max != initial_param_scale_max
             )
             return changed
 
@@ -143,7 +149,9 @@ def handle_filters(state: SearchState) -> bool:
                 state.tags = []
                 state.updated_within_days = None
                 state.param_scale = None
-                state.param_compare = "eq"
+                state.param_scale_mode = "eq"
+                state.param_scale_min = None
+                state.param_scale_max = None
                 state.sort_by = "downloads"
                 state.sort_direction = "desc"
                 print("\n✅ All filters cleared.")
@@ -499,15 +507,18 @@ def auto_generate_preset_name(state: SearchState) -> str:
     if state.updated_within_days:
         parts.append(f"updated{int(state.updated_within_days)}d")
 
-    # 5. Param scale (v0.3.5 compatibility)
-    if hasattr(state, 'param_scale') and state.param_scale:
-        param_str = f"{state.param_scale}b"
-        if hasattr(state, 'param_compare'):
-            if state.param_compare == "lt":
+    # 5. Param scale (v0.3.5: support range)
+    if hasattr(state, 'param_scale_mode'):
+        if state.param_scale_mode == "range" and (state.param_scale_min or state.param_scale_max):
+            param_str = f"range_{state.param_scale_min or 0}b_{state.param_scale_max or 0}b"
+            parts.append(param_str)
+        elif state.param_scale:
+            param_str = f"{state.param_scale}b"
+            if state.param_scale_mode == "lt":
                 param_str += "_under"
-            elif state.param_compare == "gt":
+            elif state.param_scale_mode == "gt":
                 param_str += "_over"
-        parts.append(param_str)
+            parts.append(param_str)
 
     # 6. Sort order (if not default downloads)
     if state.sort_by != "downloads":
@@ -551,10 +562,14 @@ def save_preset(preset_name: str, state: SearchState) -> bool:
         preset_data["updated_within_days"] = state.updated_within_days
 
     # v0.3.5 compatibility
-    if hasattr(state, 'param_scale') and state.param_scale:
-        preset_data["param_scale"] = state.param_scale
-    if hasattr(state, 'param_compare') and state.param_compare:
-        preset_data["param_compare"] = state.param_compare
+    if hasattr(state, 'param_scale_mode'):
+        if state.param_scale_mode == "range" and (state.param_scale_min or state.param_scale_max):
+            preset_data["param_scale_mode"] = "range"
+            preset_data["param_scale_min"] = state.param_scale_min
+            preset_data["param_scale_max"] = state.param_scale_max
+        elif state.param_scale:
+            preset_data["param_scale"] = state.param_scale
+            preset_data["param_scale_mode"] = state.param_scale_mode
 
     user_config['search']['presets'][preset_name] = preset_data
     return save_user_config(user_config)
@@ -581,10 +596,14 @@ def load_preset(preset_name: str, state: SearchState) -> bool:
     state.updated_within_days = preset_data.get("updated_within_days")
 
     # v0.3.5 compatibility
-    if hasattr(state, 'param_scale'):
-        state.param_scale = preset_data.get("param_scale")
-    if hasattr(state, 'param_compare'):
-        state.param_compare = preset_data.get("param_compare")
+    if hasattr(state, 'param_scale_mode'):
+        if preset_data.get("param_scale_mode") == "range":
+            state.param_scale_mode = "range"
+            state.param_scale_min = preset_data.get("param_scale_min")
+            state.param_scale_max = preset_data.get("param_scale_max")
+        else:
+            state.param_scale = preset_data.get("param_scale")
+            state.param_scale_mode = preset_data.get("param_scale_mode", "eq")
 
     state.page = 0
     return True
@@ -676,18 +695,20 @@ def handle_param_scale_filter(state: SearchState) -> None:
     Handle parameter scale filter input from user.
 
     Prompts for:
-    1. Parameter scale (e.g., 7, 13, 30)
-    2. Comparison operator (eq, lt, gt)
+    1. Mode selection: eq/lt/gt (single value) or range (min-max)
+    2. Value input based on mode selected
 
-    Updates state.param_scale and state.param_compare.
+    Updates state.param_scale, param_scale_min, param_scale_max, and param_scale_mode.
     """
     print("\n" + "━" * 70)
     print("📊 Parameter Scale Filter")
     print("━" * 70 + "\n")
 
     # Show current filter
-    if state.param_scale:
-        op_symbol = {"eq": "=", "lt": "<", "gt": ">"}[state.param_compare]
+    if state.param_scale_mode == "range" and (state.param_scale_min or state.param_scale_max):
+        print(f"Current: Parameters {state.param_scale_min or '?'}B - {state.param_scale_max or '?'}B\n")
+    elif state.param_scale:
+        op_symbol = {"eq": "=", "lt": "<", "gt": ">"}[state.param_scale_mode]
         print(f"Current: Parameters {op_symbol} {state.param_scale}B\n")
     else:
         print("Current: No parameter scale filter\n")
@@ -697,39 +718,81 @@ def handle_param_scale_filter(state: SearchState) -> None:
     print("  13  - Medium models (Llama-2-13B, Mistral-8x7B)")
     print("  27  - Large models (Gemma-27B, Qwen-27B)")
     print("  30  - Very large models (Llama-2-70B, Falcon-180B)")
-    print("  0   - Remove filter\n")
+    print("  70  - Massive models (Falcon-180B)\n")
 
-    # Get parameter scale input
-    scale_input = input("Enter parameter scale in billions (e.g., 7, 13, 30, or 0 to remove): ").strip()
+    # Mode selection
+    print("Choose filter mode:")
+    print("  1  = (eq)     - Exactly this size")
+    print("  2  < (lt)     - Less than this size")
+    print("  3  > (gt)     - Greater than or equal to")
+    print("  4  range      - Between min and max (inclusive)")
+    print("  0  Remove filter\n")
 
-    if not scale_input:
+    mode_input = input("Select mode (1/2/3/4) [1]: ").strip().lower()
+
+    if mode_input == "0":
+        state.param_scale = None
+        state.param_scale_mode = "eq"
+        state.param_scale_min = None
+        state.param_scale_max = None
+        print("\n✅ Parameter scale filter removed.")
         return
 
-    try:
-        scale = int(scale_input)
-        if scale <= 0:
+    # Range mode
+    if mode_input == "4":
+        try:
+            min_input = input("\nEnter minimum parameter size (e.g., 7): ").strip()
+            max_input = input("Enter maximum parameter size (e.g., 13): ").strip()
+
+            if not min_input or not max_input:
+                print("❌ Both min and max values are required for range mode.")
+                return
+
+            min_val = int(min_input)
+            max_val = int(max_input)
+
+            if min_val <= 0 or max_val <= 0:
+                print("❌ Values must be greater than 0.")
+                return
+
+            if min_val > max_val:
+                min_val, max_val = max_val, min_val
+                print(f"⚠️  Swapped: now {min_val}B - {max_val}B")
+
+            state.param_scale_mode = "range"
+            state.param_scale_min = min_val
+            state.param_scale_max = max_val
             state.param_scale = None
-            state.param_compare = "eq"
-            print("\n✅ Parameter scale filter removed.")
+            print(f"\n✅ Parameter scale filter set: {min_val}B - {max_val}B (inclusive)")
+
+        except ValueError:
+            print("❌ Invalid number. Please enter valid integers.")
+        return
+
+    # Single value modes (eq, lt, gt)
+    try:
+        scale_input = input("\nEnter parameter scale in billions (e.g., 7, 13, 30): ").strip()
+
+        if not scale_input:
             return
 
-        # Get comparison operator
-        print("\nComparison operator:")
-        print("  1  = (eq)   - Exactly this size")
-        print("  2  < (lt)   - Less than this size")
-        print("  3  > (gt)   - Greater than this size\n")
+        scale = int(scale_input)
+        if scale <= 0:
+            print("❌ Value must be greater than 0.")
+            return
 
-        compare_input = input("Choose comparison (1/2/3) [1]: ").strip().lower()
-
-        if compare_input == "2":
+        # Map mode input to compare string
+        if mode_input == "2":
             compare = "lt"
-        elif compare_input == "3":
+        elif mode_input == "3":
             compare = "gt"
         else:
             compare = "eq"
 
         state.param_scale = scale
-        state.param_compare = compare
+        state.param_scale_mode = compare
+        state.param_scale_min = None
+        state.param_scale_max = None
 
         op_symbol = {"eq": "=", "lt": "<", "gt": ">"}[compare]
         print(f"\n✅ Parameter scale filter set: {op_symbol} {scale}B")
