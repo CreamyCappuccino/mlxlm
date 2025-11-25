@@ -62,7 +62,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Edge cases (zero values, large values, None handling)
   - Integration with SearchState and JSON output
 
-## [0.3.0] - 2025-11-23
+## [0.3.0] - 2025-11-24
 
 ### Added
 - **New `mlxlm search` command** for searching HuggingFace models
