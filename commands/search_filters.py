@@ -884,8 +884,8 @@ def extract_precision_info(model_id: str) -> dict:
         (3, r'q3_k_s|q3_k_m|q3_k_l'),
         # GGUF 4-bit variants + generic 4-bit
         (4, r'q4_k_s|q4_k_m|q4_0|q4_1|4[-]?bit|int4(?!-)'),
-        # GGUF 5-bit variants
-        (5, r'q5_k_s|q5_k_m|q5_0|q5_1'),
+        # GGUF 5-bit variants + generic 5-bit
+        (5, r'q5_k_s|q5_k_m|q5_0|q5_1|5[-]?bit|int5(?!-)'),
         # GGUF 6-bit variants + generic 6-bit
         (6, r'q6_k|6[-]?bit|int6(?!-)'),
         # 8-bit variants

@@ -131,6 +131,18 @@ class TestExtractPrecisionInfo:
         assert result['precision_level'] == 5
         assert result['method'] == 'gguf'
 
+    def test_generic_5bit_detection(self):
+        """Test detection of generic 5-bit models."""
+        result = extract_precision_info("model-5bit-quantized")
+        assert result['precision_level'] == 5
+        assert result['method'] is None
+
+    def test_generic_5bit_hyphenated_detection(self):
+        """Test detection of generic 5-bit models with hyphen."""
+        result = extract_precision_info("model-5-bit-quantized")
+        assert result['precision_level'] == 5
+        assert result['method'] is None
+
     # ===== GGUF 6-bit Tests =====
     def test_gguf_q6_k_detection(self):
         """Test detection of GGUF Q6_K variant."""
