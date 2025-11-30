@@ -872,8 +872,12 @@ def extract_precision_info(model_id: str) -> dict:
         'mlx': r'mlx.*quantized',
     }
 
-    # Precision level patterns (order matters - specific GGUF variants first)
+    # Precision level patterns (order matters - longer/specific patterns first to avoid partial matches)
     precision_patterns = [
+        # 32-bit (FP32 - full precision) - check 32 before 3
+        (32, r'32[-]?bit|fp32'),
+        # 16-bit (FP16, BF16 - non-quantized) - check 16 before 6
+        (16, r'16[-]?bit|fp16|bf16'),
         # GGUF 2-bit variants
         (2, r'q2_k|q2_m'),
         # GGUF 3-bit variants

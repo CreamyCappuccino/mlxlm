@@ -175,6 +175,38 @@ class TestExtractPrecisionInfo:
         result = extract_precision_info("mlx-community/mlx-gemma-quantized")
         assert result['method'] == 'mlx'
 
+    # ===== 16-bit (FP16, BF16) Tests =====
+    def test_16bit_fp16_detection(self):
+        """Test detection of FP16 16-bit models."""
+        result = extract_precision_info("model-fp16")
+        assert result['precision_level'] == 16
+        assert result['method'] is None
+
+    def test_16bit_bf16_detection(self):
+        """Test detection of BF16 16-bit models."""
+        result = extract_precision_info("model-bf16")
+        assert result['precision_level'] == 16
+        assert result['method'] is None
+
+    def test_16bit_hyphenated_detection(self):
+        """Test detection of hyphenated 16-bit notation."""
+        result = extract_precision_info("model-16-bit")
+        assert result['precision_level'] == 16
+        assert result['method'] is None
+
+    # ===== 32-bit (FP32) Tests =====
+    def test_32bit_fp32_detection(self):
+        """Test detection of FP32 full precision models."""
+        result = extract_precision_info("model-fp32")
+        assert result['precision_level'] == 32
+        assert result['method'] is None
+
+    def test_32bit_hyphenated_detection(self):
+        """Test detection of hyphenated 32-bit notation."""
+        result = extract_precision_info("model-32-bit")
+        assert result['precision_level'] == 32
+        assert result['method'] is None
+
     # ===== Non-quantized Tests =====
     def test_non_quantized_model(self):
         """Test that non-quantized models return None."""
