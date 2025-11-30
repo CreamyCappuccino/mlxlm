@@ -72,6 +72,8 @@ def main() -> None:
             param_scale_mode=getattr(args, "param_scale_mode", "eq"),
             param_scale_min=getattr(args, "param_scale_min", None),
             param_scale_max=getattr(args, "param_scale_max", None),
+            precision_level=getattr(args, "precision", None),
+            precision_method=getattr(args, "method", None),
             sort=getattr(args, "sort", "downloads"),
             limit=getattr(args, "limit", 7),
             no_interactive=getattr(args, "no_interactive", False),

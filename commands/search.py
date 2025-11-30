@@ -64,6 +64,8 @@ class SearchState:
         self.param_scale_mode: str = "eq"  # eq, lt, gt, range (v0.3.5)
         self.param_scale_min: Optional[int] = None  # v0.3.5: min for range mode
         self.param_scale_max: Optional[int] = None  # v0.3.5: max for range mode
+        self.precision_level: Optional[int] = None  # v0.3.6: model precision level (2, 3, 4, 5, 6, 8, 16, 32)
+        self.precision_method: Optional[str] = None  # v0.3.6: quantization method (awq, gptq, gguf, mlx)
         self.page: int = 0
         self.results_per_page: int = 10
 
@@ -73,12 +75,14 @@ class SearchState:
             self.param_scale or
             (self.param_scale_mode == "range" and (self.param_scale_min or self.param_scale_max))
         )
+        precision_filter_active = self.precision_level or self.precision_method
         return bool(
             self.max_size_gb or
             self.min_downloads or
             self.tags or
             self.updated_within_days or
-            param_filter_active
+            param_filter_active or
+            precision_filter_active
         )
 
     def get_filter_summary(self) -> list[str]:
@@ -97,6 +101,13 @@ class SearchState:
         elif self.param_scale and self.param_scale_mode in ["eq", "lt", "gt"]:
             op_symbol = {"eq": "=", "lt": "<", "gt": ">"}[self.param_scale_mode]
             filters.append(f"Parameters: {op_symbol} {self.param_scale}B")
+        if self.precision_level:
+            precision_str = f"Precision: {self.precision_level}-bit"
+            if self.precision_method:
+                precision_str += f" ({self.precision_method.upper()})"
+            filters.append(precision_str)
+        elif self.precision_method:
+            filters.append(f"Precision: Any level ({self.precision_method.upper()})")
         return filters
 
 
@@ -272,6 +283,21 @@ def search_huggingface(query: str, state: SearchState) -> list[dict]:
                 elif state.param_scale_mode == "gt" and model_params <= state.param_scale:
                     continue
 
+            # Model precision filter (v0.3.6)
+            if state.precision_level or state.precision_method:
+                from .search_filters import extract_precision_info
+                precision_info = extract_precision_info(model.id)
+
+                # If precision_level is set, model must match that level
+                if state.precision_level:
+                    if precision_info.get('precision_level') != state.precision_level:
+                        continue
+
+                # If precision_method is set (optionally), model must match that method
+                if state.precision_method:
+                    if precision_info.get('method') != state.precision_method:
+                        continue
+
             filtered_models.append(model)
 
         # Client-side sorting for "size" (HF API doesn't support it)
@@ -338,6 +364,8 @@ def search_main(
     param_scale_mode: str = "eq",
     param_scale_min: Optional[int] = None,
     param_scale_max: Optional[int] = None,
+    precision_level: Optional[int] = None,
+    precision_method: Optional[str] = None,
     sort: str = "downloads",
     limit: int = 7,
     no_interactive: bool = False,
@@ -450,6 +478,10 @@ NOTES:
         state.param_scale_max = param_scale_max
         if state.param_scale_mode != "range":
             state.param_scale_mode = "range"
+    if precision_level:
+        state.precision_level = precision_level
+    if precision_method:
+        state.precision_method = precision_method
 
     # Perform search
     models = search_huggingface(query, state)
@@ -471,6 +503,10 @@ NOTES:
         else:
             filters_dict["param_scale"] = state.param_scale
             filters_dict["param_scale_mode"] = state.param_scale_mode
+        if state.precision_level:
+            filters_dict["precision_level"] = state.precision_level
+        if state.precision_method:
+            filters_dict["precision_method"] = state.precision_method
 
         output = {
             "query": query,

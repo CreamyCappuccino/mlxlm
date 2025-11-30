@@ -103,6 +103,14 @@ For detailed options and more examples: mlxlm search <query> --help-detail
         help="Maximum parameter scale for range mode (e.g., 30)"
     )
     search_parser.add_argument(
+        "--precision", type=int, choices=[2, 3, 4, 5, 6, 8, 16, 32],
+        help="Filter by model precision level (2-bit through 32-bit) (v0.3.6)"
+    )
+    search_parser.add_argument(
+        "--method", choices=["awq", "gptq", "gguf", "mlx"],
+        help="Filter by quantization method (optional, works with --precision) (v0.3.6)"
+    )
+    search_parser.add_argument(
         "--sort", choices=["downloads", "updated", "size"], default="downloads",
         help="Sort by downloads/updated/size (default: downloads)"
     )

@@ -148,7 +148,7 @@ def handle_detail_view(model, state: SearchState) -> None:
                 if alias_name:
                     # Import alias functionality
                     from .alias import alias_main
-                    from ..core import repo_to_cache_name
+                    from core import repo_to_cache_name
 
                     cache_key = repo_to_cache_name(repo_id)
                     alias_main(["add", cache_key, alias_name])

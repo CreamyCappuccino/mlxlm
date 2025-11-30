@@ -28,6 +28,8 @@ def handle_filters(state: SearchState) -> bool:
     initial_param_scale_mode = state.param_scale_mode
     initial_param_scale_min = state.param_scale_min
     initial_param_scale_max = state.param_scale_max
+    initial_precision_level = state.precision_level
+    initial_precision_method = state.precision_method
 
     # Show current filters and ask if user wants to keep them
     if state.has_filters() or state.sort_by != "downloads":
@@ -53,6 +55,8 @@ def handle_filters(state: SearchState) -> bool:
             state.param_scale_mode = "eq"
             state.param_scale_min = None
             state.param_scale_max = None
+            state.precision_level = None
+            state.precision_method = None
             state.sort_by = "downloads"
             print("\n✅ All settings cleared.")
 
@@ -79,10 +83,11 @@ def handle_filters(state: SearchState) -> bool:
         print("  5  Tags (e.g., mlx, quantized, instruct)")
         print("  6  Parameter scale (7B, 13B, 30B, etc.)")
         print("  7  Last updated (within X days)")
-        print("  8  Clear all filters")
-        print("  9  Save current filters as preset")
-        print("  10 Load preset")
-        print("  11 Delete preset")
+        print("  8  Model Precision (2-bit, 4-bit, 8-bit, 16-bit, 32-bit)")
+        print("  9  Clear all filters")
+        print("  10 Save current filters as preset")
+        print("  11 Load preset")
+        print("  12 Delete preset")
         print("  0  Back to results")
         print("\n💡 Tip: You can type /exit at any time to cancel.\n")
 
@@ -101,7 +106,9 @@ def handle_filters(state: SearchState) -> bool:
                 state.param_scale != initial_param_scale or
                 state.param_scale_mode != initial_param_scale_mode or
                 state.param_scale_min != initial_param_scale_min or
-                state.param_scale_max != initial_param_scale_max
+                state.param_scale_max != initial_param_scale_max or
+                state.precision_level != initial_precision_level or
+                state.precision_method != initial_precision_method
             )
             return changed
 
@@ -140,8 +147,13 @@ def handle_filters(state: SearchState) -> bool:
             handle_updated_filter(state)
             continue
 
-        # Clear all
+        # Model precision filter (v0.3.6)
         if choice == "8":
+            handle_precision_filter(state)
+            continue
+
+        # Clear all
+        if choice == "9":
             confirm = input("\nClear all filters? [(y)/n]: ").strip().lower()
             if confirm in ("", "y", "yes"):
                 state.max_size_gb = None
@@ -152,6 +164,8 @@ def handle_filters(state: SearchState) -> bool:
                 state.param_scale_mode = "eq"
                 state.param_scale_min = None
                 state.param_scale_max = None
+                state.precision_level = None
+                state.precision_method = None
                 state.sort_by = "downloads"
                 state.sort_direction = "desc"
                 print("\n✅ All filters cleared.")
@@ -160,7 +174,7 @@ def handle_filters(state: SearchState) -> bool:
             continue
 
         # Save preset
-        if choice == "9":
+        if choice == "10":
             print("\n" + "━" * 70)
             print("💾 Save as Preset")
             print("━" * 70 + "\n")
@@ -175,7 +189,7 @@ def handle_filters(state: SearchState) -> bool:
             continue
 
         # Load preset
-        if choice == "10":
+        if choice == "11":
             presets = list_presets()
             if not presets:
                 print("\n❌ No presets available. Save one first!")
@@ -221,7 +235,7 @@ def handle_filters(state: SearchState) -> bool:
             continue
 
         # Delete preset
-        if choice == "11":
+        if choice == "12":
             presets = list_presets()
             if not presets:
                 print("\n❌ No presets available.")
@@ -256,7 +270,7 @@ def handle_filters(state: SearchState) -> bool:
                 print("❌ Invalid input")
             continue
 
-        print("❌ Invalid choice. Choose 1-11 or 0.")
+        print("❌ Invalid choice. Choose 1-12 or 0.")
 
 
 def handle_sort_menu(state: SearchState) -> None:
@@ -571,6 +585,14 @@ def save_preset(preset_name: str, state: SearchState) -> bool:
             preset_data["param_scale"] = state.param_scale
             preset_data["param_scale_mode"] = state.param_scale_mode
 
+    # v0.3.6 compatibility
+    if hasattr(state, 'precision_level'):
+        if state.precision_level:
+            preset_data["precision_level"] = state.precision_level
+    if hasattr(state, 'precision_method'):
+        if state.precision_method:
+            preset_data["precision_method"] = state.precision_method
+
     user_config['search']['presets'][preset_name] = preset_data
     return save_user_config(user_config)
 
@@ -604,6 +626,12 @@ def load_preset(preset_name: str, state: SearchState) -> bool:
         else:
             state.param_scale = preset_data.get("param_scale")
             state.param_scale_mode = preset_data.get("param_scale_mode", "eq")
+
+    # v0.3.6 compatibility
+    if hasattr(state, 'precision_level'):
+        state.precision_level = preset_data.get("precision_level")
+    if hasattr(state, 'precision_method'):
+        state.precision_method = preset_data.get("precision_method")
 
     state.page = 0
     return True
@@ -799,3 +827,195 @@ def handle_param_scale_filter(state: SearchState) -> None:
 
     except ValueError:
         print("❌ Invalid number. Please enter a valid integer.")
+
+
+# ===== Model Precision Filter (v0.3.6) =====
+
+def extract_precision_info(model_id: str) -> dict:
+    """
+    Extract model precision level and quantization method from model repo_id.
+
+    Precision levels:
+        - Quantized: 2, 3, 4, 5, 6, 8-bit (various methods)
+        - Non-quantized: 16, 32-bit (full precision)
+
+    Examples:
+        "cpatonn/Qwen3-Next-80B-A3B-Instruct-AWQ-4bit" →
+            {'precision_level': 4, 'method': 'awq'}
+        "TheBloke/WizardLM-Q4_K_M-GGUF" →
+            {'precision_level': 4, 'method': 'gguf'}
+        "meta-llama/Llama-2-7B" (no quantization markers) →
+            {'precision_level': None, 'method': None}
+
+    Args:
+        model_id: Model repository ID (e.g., "org/model-name")
+
+    Returns:
+        {
+            'precision_level': 2 | 3 | 4 | 5 | 6 | 8 | 16 | 32 | None,
+            'method': 'awq' | 'gptq' | 'gguf' | 'mlx' | None
+        }
+    """
+    if not model_id:
+        return {'precision_level': None, 'method': None}
+
+    # Extract suffix (last 3 parts joined by hyphen)
+    # e.g., "cpatonn/Qwen3-Next-80B-A3B-Instruct-AWQ-4bit" → "instruct-awq-4bit"
+    parts = model_id.replace('/', '-').split('-')
+    suffix = '-'.join(parts[-3:]).lower() if len(parts) >= 3 else model_id.lower()
+
+    # Method detection patterns
+    method_patterns = {
+        'awq': r'awq',
+        'gptq': r'gptq',
+        'gguf': r'gguf',
+        'mlx': r'mlx.*quantized',
+    }
+
+    # Precision level patterns (order matters - specific GGUF variants first)
+    precision_patterns = [
+        # GGUF 2-bit variants
+        (2, r'q2_k|q2_m'),
+        # GGUF 3-bit variants
+        (3, r'q3_k_s|q3_k_m|q3_k_l'),
+        # GGUF 4-bit variants + generic 4-bit
+        (4, r'q4_k_s|q4_k_m|q4_0|q4_1|4[-]?bit|int4(?!-)'),
+        # GGUF 5-bit variants
+        (5, r'q5_k_s|q5_k_m|q5_0|q5_1'),
+        # GGUF 6-bit variants + generic 6-bit
+        (6, r'q6_k|6[-]?bit|int6(?!-)'),
+        # 8-bit variants
+        (8, r'q8_0|q8_1|8[-]?bit|int8(?!-)'),
+    ]
+
+    # Detect method
+    detected_method = None
+    for method, pattern in method_patterns.items():
+        if re.search(pattern, suffix):
+            detected_method = method
+            break
+
+    # Detect precision level
+    detected_precision = None
+    for precision_level, pattern in precision_patterns:
+        if re.search(pattern, suffix):
+            detected_precision = precision_level
+            break
+
+    return {
+        'precision_level': detected_precision,
+        'method': detected_method
+    }
+
+
+def handle_precision_filter(state: SearchState) -> None:
+    """
+    Handle model precision filter menu.
+
+    Allows user to select a precision level (2, 3, 4, 5, 6, 8-bit quantized
+    or 16, 32-bit non-quantized), and optionally narrow down by method
+    (AWQ, GPTQ, GGUF, MLX).
+
+    Updates state.precision_level and state.precision_method.
+    """
+    print("\n" + "━" * 70)
+    print("🎯 Model Precision Filter")
+    print("━" * 70 + "\n")
+
+    # Show current filter
+    if state.precision_level or state.precision_method:
+        filters_active = []
+        if state.precision_level:
+            filters_active.append(f"{state.precision_level}-bit")
+        if state.precision_method:
+            filters_active.append(f"{state.precision_method.upper()}")
+        print(f"Current: {', '.join(filters_active)}\n")
+    else:
+        print("Current: No precision filter\n")
+
+    print("Available precision levels:")
+    print("  1  2-bit   (GGUF: q2_k, q2_m)")
+    print("  2  3-bit   (GGUF: q3_k_s, q3_k_m, q3_k_l)")
+    print("  3  4-bit   (AWQ, GPTQ, GGUF, MLX)")
+    print("  4  5-bit   (GGUF: q5_k_s, q5_k_m, q5_0, q5_1)")
+    print("  5  6-bit   (GGUF: q6_k)")
+    print("  6  8-bit   (AWQ, GPTQ, GGUF)")
+    print("  7  16-bit  (FP16, BF16 - non-quantized)")
+    print("  8  32-bit  (FP32 - full precision)")
+    print("  0  Remove filter\n")
+
+    precision_choice = input("Select precision level (0-8): ").strip()
+
+    if precision_choice == "0":
+        state.precision_level = None
+        state.precision_method = None
+        print("\n✅ Model precision filter removed.")
+        return
+
+    precision_map = {
+        "1": 2,
+        "2": 3,
+        "3": 4,
+        "4": 5,
+        "5": 6,
+        "6": 8,
+        "7": 16,
+        "8": 32,
+    }
+
+    if precision_choice not in precision_map:
+        print("❌ Invalid choice.")
+        return
+
+    selected_precision = precision_map[precision_choice]
+    state.precision_level = selected_precision
+
+    # Ask for method (optional)
+    print(f"\nQuantization methods available for {selected_precision}-bit:")
+
+    if selected_precision in (2, 3, 5):
+        # Only GGUF for these precision levels
+        print("  1  GGUF")
+        print("  0  Any method (show all {}-bit models)\n".format(selected_precision))
+        method_choice = input("Select method (0-1) [0]: ").strip() or "0"
+        method_map = {"1": "gguf"}
+    elif selected_precision == 4:
+        # All methods available for 4-bit
+        print("  1  AWQ")
+        print("  2  GPTQ")
+        print("  3  GGUF")
+        print("  4  MLX")
+        print("  0  Any method (show all 4-bit models)\n")
+        method_choice = input("Select method (0-4) [0]: ").strip() or "0"
+        method_map = {"1": "awq", "2": "gptq", "3": "gguf", "4": "mlx"}
+    elif selected_precision == 6:
+        # AWQ, GPTQ, GGUF for 6-bit
+        print("  1  AWQ")
+        print("  2  GPTQ")
+        print("  3  GGUF")
+        print("  0  Any method (show all 6-bit models)\n")
+        method_choice = input("Select method (0-3) [0]: ").strip() or "0"
+        method_map = {"1": "awq", "2": "gptq", "3": "gguf"}
+    elif selected_precision == 8:
+        # AWQ, GPTQ, GGUF for 8-bit
+        print("  1  AWQ")
+        print("  2  GPTQ")
+        print("  3  GGUF")
+        print("  0  Any method (show all 8-bit models)\n")
+        method_choice = input("Select method (0-3) [0]: ").strip() or "0"
+        method_map = {"1": "awq", "2": "gptq", "3": "gguf"}
+    else:
+        # 16-bit, 32-bit: non-quantized, no method
+        print("  (Non-quantized models - no method selection)\n")
+        state.precision_method = None
+        print(f"\n✅ Model precision filter set: {selected_precision}-bit (non-quantized)")
+        return
+
+    # Set method if selected
+    state.precision_method = method_map.get(method_choice) if method_choice != "0" else None
+
+    # Display confirmation
+    if state.precision_method:
+        print(f"\n✅ Model precision filter set: {selected_precision}-bit + {state.precision_method.upper()}")
+    else:
+        print(f"\n✅ Model precision filter set: {selected_precision}-bit (any method)")
