@@ -1,19 +1,61 @@
 # 🧠 MLX-LM CLI Tool
 
-This repository provides a simple CLI interface for working with MLX-based language models on Apple Silicon.  
-It aims to offer a friendly, scriptable, and consistent way to explore and manage MLX-LM models.
+**mlxlm is an Ollama-inspired CLI tool designed to make MLX-LM models easy to discover, explore, and use on Apple Silicon.**
+
+While [mlx-lm](https://github.com/ml-explore/mlx-examples/tree/main/llms) focuses on the model execution framework, mlxlm adds a complete user-facing layer: **powerful HuggingFace model search, precision filtering, interactive menus, session management, multiple chat renderers, and more.**
+
+## Why mlxlm?
+
+**vs. mlx-lm (official):**
+- mlx-lm provides Python APIs and minimal CLI → mlxlm adds rich CLI + interactive UI
+- mlx-lm has no model search → mlxlm searches HuggingFace with advanced filters
+- mlx-lm requires manual model management → mlxlm provides aliases, sessions, and presets
+
+**vs. Ollama:**
+- Ollama is simple but limited → mlxlm combines simplicity with flexibility
+- Ollama can't search models → mlxlm has powerful search with AND/OR/exclude syntax
+- Ollama has fixed UI → mlxlm offers dual-mode (CLI flags + interactive menu)
+
+**Result:** An Ollama-like experience with mlx-lm's performance, plus HuggingFace integration and advanced search capabilities.
 
 ---
 
-## 📦 Features
+## ✨ Features (v0.3.6+)
 
-- 📋 **List models** - View all installed MLX-LM models with sizes and aliases
-- ℹ️ **Model info** - Inspect model configuration, architecture, and precision
-- 💬 **Interactive chat** - Conversational mode with full context awareness
-- 🎭 **Multiple renderers** - Harmony, HuggingFace, or plain text formatting
-- 💾 **Conversation history** - Toggle between full context or Q&A mode
-- 🛑 **Stop sequences** - Fine-grained output control
-- 🏷️ **Alias management** - Quick shortcuts for long model names
+### 🔍 Powerful Model Search (HuggingFace)
+- **Advanced search syntax**: AND (`llama+instruct`), OR (`llama mistral`), exclude (`!qwen`)
+- **Precision filter**: 2-bit to 32-bit (supports GGUF/AWQ/GPTQ/MLX quantization methods)
+- **Parameter scale filter**: Filter by model size (7B, 13B, 30B, etc.) with comparison operators
+- **Rich filtering**: Tags, size, downloads, recency, sorting, pagination
+- **Session caching**: Lightning-fast re-queries within same session
+- **Configurable API limits**: Control HuggingFace API result count with `--hf-limit`
+- **Multiple output modes**: Interactive menu, JSON (for automation/AI agents), or plain text
+
+### 🧭 Dual-Mode UI: CLI Flags + Interactive Menu
+- Use CLI flags for automation and scripting
+- Use interactive menu for exploration and visual filtering
+- Switch seamlessly between both modes
+- Slash commands for quick actions (`/search`, `/display`, `/change`)
+
+### 💬 Flexible Chat Interface
+- Run MLX-LM models in conversational mode
+- **Multiple renderers**: Harmony, HuggingFace chat_template, or plain text
+- **Streaming modes**: Real-time output, final-only, or batch
+- **Session management**: Resume previous chats, autosave, start fresh with `/new`
+- **Custom controls**: System prompts, stop sequences, reasoning hints, token limits
+
+### 🏷️ Smart Model Management
+- **Alias system**: Shorten long HuggingFace names (`mlxlm run llama3` instead of full repo ID)
+- **Interactive alias menu**: Browse, add, edit, or remove aliases visually
+- **Model info**: Inspect configuration, architecture, precision, and metadata
+- **Pull & remove**: Download models from HuggingFace or clean up local cache
+
+### 🔧 Developer-Friendly Tools
+- **JSON output mode**: Perfect for automation, scripting, and AI agents
+- **Environment diagnostics**: `mlxlm doctor` checks MLX runtime, Harmony, HF cache
+- **Offline mode**: Work with local cache only (no API calls)
+- **Debug output**: Detailed internal state and prompt inspection
+- **Custom renderers**: Override default chat rendering behavior
 
 ---
 
@@ -74,6 +116,89 @@ sudo ln -s $(pwd)/mlxlm.py /usr/local/bin/mlxlm
 ---
 
 ## 🚀 Usage
+
+### 🔍 Search HuggingFace models:
+
+The search feature is the star of v0.3.6 - discover models with powerful filtering and advanced query syntax.
+
+**Basic search:**
+```bash
+# Interactive search (recommended)
+mlxlm search llama
+
+# Non-interactive output
+mlxlm search mistral --no-interactive
+
+# JSON output (for automation/AI agents)
+mlxlm search qwen --json
+```
+
+**Advanced search syntax:**
+```bash
+# AND search: both keywords required
+mlxlm search 'llama+instruct'
+mlxlm search 'qwen,mistral'  # comma also works
+
+# OR search: either keyword (default with spaces)
+mlxlm search 'llama mistral'
+
+# Exclude: filter out unwanted models
+mlxlm search 'llama !qwen'
+mlxlm search '!gpt !deepseek'  # exclude-only query
+
+# Combined: AND + exclude
+mlxlm search 'llama+instruct !qwen !120B'
+```
+
+**Precision filter (v0.3.6):**
+```bash
+# Get all 4-bit models (any quantization method)
+mlxlm search --precision 4
+
+# Get 4-bit GGUF models only
+mlxlm search llama --precision 4 --method gguf
+
+# Get non-quantized 16-bit models
+mlxlm search mistral --precision 16
+```
+
+**Parameter scale filter:**
+```bash
+# Exact size: 7B models
+mlxlm search --param-scale 7
+
+# Range: 7B to 13B
+mlxlm search --param-scale-min 7 --param-scale-max 13 --param-scale-mode range
+
+# Less than 13B
+mlxlm search --param-scale 13 --param-scale-mode lt
+```
+
+**Other filters:**
+```bash
+# Filter by tags
+mlxlm search llama --filter-tag mlx --filter-tag quantized
+
+# Size and download constraints
+mlxlm search --max-size 10 --min-downloads 1000
+
+# Recently updated models
+mlxlm search --updated-within 30
+
+# Sort options
+mlxlm search --sort downloads  # default
+mlxlm search --sort updated
+mlxlm search --sort size
+```
+
+**Interactive menu:**
+Once in search results, you can:
+- Press 1-10 to view model details
+- Press `F` to open filter menu
+- Press `N` for next page, `P` for previous
+- Use `/s llama+instruct` for quick re-search
+- Use `/display 20` to change results per page
+- Use `/change 100` to adjust API search limit
 
 ### 📋 List all models:
 
@@ -225,22 +350,37 @@ mlxlm run gemma3:27b --chat harmony
 
 ```
 MLX-LM/
-├── mlxlm.py            # Main CLI entry point
-├── commands.py         # Core command implementations (list, show, pull, run, alias, doctor)
-├── core.py             # Utility functions (model loading, rendering, streaming, Harmony support)
-├── cli_flags.py        # CLI argument parser definitions
-├── .mlxlm_aliases.json # Model alias mappings (auto-generated)
-├── README.md           # This file
-└── .gitignore
+├── mlxlm.py                      # Main CLI entry point
+├── cli_flags.py                  # CLI argument parser definitions
+├── core.py                       # Utility functions (config, model loading, rendering)
+├── commands/                     # Command implementations (v0.2.7+ modular architecture)
+│   ├── __init__.py
+│   ├── list.py                   # List installed models
+│   ├── show.py                   # Show model info
+│   ├── pull.py                   # Download models
+│   ├── remove.py                 # Remove cached models
+│   ├── run.py                    # Interactive chat (v0.2.5-v0.2.8 enhanced)
+│   ├── alias.py                  # Alias management
+│   ├── doctor.py                 # Environment diagnostics
+│   ├── search.py                 # HuggingFace search (v0.3.0+)
+│   ├── search_display.py         # Search result rendering
+│   ├── search_filters.py         # Filter UI & logic (v0.3.5-v0.3.6)
+│   └── search_interactive.py     # Interactive search menu
+├── tests/                        # Test suite (323 tests)
+├── .mlxlm_aliases.json           # Model alias mappings (auto-generated)
+├── mlxlm_config.json             # User settings (auto-generated, v0.3.4+)
+├── mlxlm_data/                   # Session history, presets (v0.2.8+, not tracked)
+├── CHANGELOG.md                  # Version history
+├── README.md                     # This file
+└── LICENSE                       # MIT License
 ```
 
-**Main source files:**
-- 🎯 `mlxlm.py`: Entry point, command routing
-- ⚙️ `commands.py`: All command handlers (list, show, pull, remove, run, alias, doctor)
-- 🔧 `core.py`: Core utilities (config loading, model type detection, prompt rendering, streaming helpers)
-- 📋 `cli_flags.py`: Argument parser setup
-- 🔐 `LICENSE`: MIT License
-- 📄 `README.md`: This documentation
+**Architecture evolution:**
+- **v0.1.0**: Monolithic design (mlxlm.py + commands.py + core.py)
+- **v0.2.7**: Modularized commands/ directory (12 modules, 62% code reduction)
+- **v0.3.0**: Search feature added (4 search-related modules)
+- **v0.3.4**: Persistent config & filter presets
+- **v0.3.6**: Advanced search filters (precision, param scale, AND/OR/exclude)
 
 ---
 
