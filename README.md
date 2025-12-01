@@ -1,6 +1,6 @@
 # 🧠 MLX-LM CLI Tool
 
-**mlxlm is an Ollama-inspired CLI tool designed to make MLX-LM models easy to discover, explore, and use on Apple Silicon.**
+**mlxlm is an Ollama-inspired CLI tool that complements Ollama by focusing on model discovery, exploration, and MLX-optimized experimentation on Apple Silicon.**
 
 While [mlx-lm](https://github.com/ml-explore/mlx-examples/tree/main/llms) focuses on the model execution framework, mlxlm adds a complete user-facing layer: **powerful HuggingFace model search, precision filtering, interactive menus, session management, multiple chat renderers, and more.**
 
@@ -11,12 +11,19 @@ While [mlx-lm](https://github.com/ml-explore/mlx-examples/tree/main/llms) focuse
 - mlx-lm has no model search → mlxlm searches HuggingFace with advanced filters
 - mlx-lm requires manual model management → mlxlm provides aliases, sessions, and presets
 
-**vs. Ollama:**
-- Ollama is simple but limited → mlxlm combines simplicity with flexibility
-- Ollama can't search models → mlxlm has powerful search with AND/OR/exclude syntax
-- Ollama has fixed UI → mlxlm offers dual-mode (CLI flags + interactive menu)
+**vs. Ollama (Different purposes, natural partners):**
 
-**Result:** An Ollama-like experience with mlx-lm's performance, plus HuggingFace integration and advanced search capabilities.
+Ollama excels at integrated model management and inference serving with cross-platform support. mlxlm serves a different purpose: **deep model discovery and MLX-optimized experimentation**.
+
+| Feature | Ollama | mlxlm |
+|---------|--------|-------|
+| **Model Discovery** | Basic (no search) | Advanced (AND/OR/exclude, precision filters) |
+| **Quantization Support** | Primarily GGUF | All HF formats (GGUF/AWQ/GPTQ/MLX/FP16) |
+| **Runtime Type** | Inference server | Lightweight CLI tool |
+| **Apple Silicon** | Good (Metal) | Optimized (MLX native) |
+| **Use Case** | Production serving | Research & exploration |
+
+**In practice:** Many users run Ollama for production inference while using mlxlm to discover and compare models before pulling. They're complementary tools.
 
 ---
 
@@ -56,6 +63,28 @@ While [mlx-lm](https://github.com/ml-explore/mlx-examples/tree/main/llms) focuse
 - **Offline mode**: Work with local cache only (no API calls)
 - **Debug output**: Detailed internal state and prompt inspection
 - **Custom renderers**: Override default chat rendering behavior
+
+---
+
+## 🎯 Use Cases
+
+### For Ollama users:
+- **Model discovery**: Search HuggingFace's vast model collection using AND/OR/exclude syntax
+- **Precision comparison**: Filter by quantization method, bit depth, and model size
+- **MLX experimentation**: Try Apple Silicon–optimized models before deciding where to deploy
+- **Quick evaluation**: Use interactive search to preview models before pulling to Ollama
+
+### For MLX-LM users:
+- **Dual-mode workflow**: CLI flags for automation, interactive menus for exploration
+- **Session-based search**: Cache results and iterate quickly across multiple searches
+- **Model metadata**: Deep dive into configuration, architecture, and precision details
+- **Advanced filtering**: Combine AND/OR/exclude searches with precision and parameter filters
+
+### For researchers & developers:
+- **Model curation**: Systematically evaluate models by quantization, size, and performance
+- **Automated workflows**: JSON output for integration with scripts and AI pipelines
+- **Custom chat modes**: Multiple renderers, streaming control, and reasoning hints
+- **Reproducible experiments**: Save search presets and model configurations for team collaboration
 
 ---
 
@@ -386,10 +415,10 @@ MLX-LM/
 
 ## 📝 Notes
 
-- **Ollama-inspired**: Built to bring Ollama-like simplicity to MLX-LM
+- **Ollama-complementary**: Designed to work alongside Ollama by adding deep model discovery and MLX-optimized tools
 - **Apple Silicon optimized**: Leverages MLX framework for native performance
-- **Model agnostic**: Works with any MLX-compatible model
-- **Extensible**: Alias system and multiple chat modes for flexibility
+- **Model agnostic**: Works with any HuggingFace model compatible with MLX-LM
+- **Extensible**: Alias system, custom renderers, and flexible chat modes for experimentation
 
 ---
 
