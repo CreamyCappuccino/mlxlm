@@ -5,6 +5,69 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.6] - 2025-12-01
+
+### Added
+- **Model Precision Filter** (re-designed from v0.3.6 initial version)
+  - Support for 8 precision levels: 2-bit, 3-bit, 4-bit, 5-bit, 6-bit, 8-bit, 16-bit, 32-bit
+  - Quantization methods: AWQ, GPTQ, GGUF, MLX
+  - GGUF variant support: q2_k, q2_m, q3_k_*, q4_k_*, q5_*, q6_k, q8_*
+  - Non-quantized models (16/32-bit FP16/BF16) fully supported
+  - Precision level is independent filter (specify bit count only to get all methods)
+  - Optional method filtering to narrow results further
+  - Dynamic menu: available methods change based on selected precision
+  - CLI flags: `--precision LEVEL` and optional `--method {awq,gptq,gguf,mlx}`
+  - Tag-based fallback detection for better precision inference
+
+- **Session-based memory caching**
+  - Cache precision filter results within a session
+  - Reduces API calls when revisiting same precision level
+  - Cache cleared between sessions
+
+- **API search limit configuration**
+  - New CLI flag: `--hf-limit N` to specify HuggingFace API result count
+  - Interactive menu option: C to change API search limit
+  - Slash commands: `/change N`, `/c N` for quick configuration
+  - Default: 500 (no tags), 100 (with tags)
+
+- **AND/OR/Exclude search syntax**
+  - AND search: `llama+mistral` or `llama,instruct` (both keywords required)
+  - OR search: `llama mistral` (space-separated, default behavior)
+  - Exclude search: `!qwen` or `-gpt` (prefix notation)
+  - Combined queries: `llama+mistral !qwen` (AND both, exclude qwen)
+  - Exclude-only queries: `/s !qwen` shows all models except qwen
+  - zsh compatibility: automatic conversion of `\!` to `!` for history expansion
+
+### Changed
+- **SearchState extended** with new attributes:
+  - `precision_level`: Optional[int] for precision filtering
+  - `precision_method`: Optional[str] for method filtering
+  - `search_type`: "and" or "or" for AND/OR search mode
+  - `search_keywords`: list[str] for parsed keywords
+  - `exclude_keywords`: list[str] for exclusion keywords
+  - `search_cache`: dict for session-based caching
+  - `hf_search_limit`: Optional[int] for API result count limit
+
+- **Interactive menu updated**
+  - New advanced search syntax hints shown in main menu
+  - Examples for AND/OR/exclude queries
+  - Comma (,) confirmed as working AND delimiter alongside plus (+)
+
+### Technical
+- Comprehensive test suite: 323 tests PASS (37 new tests for v0.3.6)
+- New functions:
+  - `parse_search_query()`: Parse AND/OR/exclude syntax from user input
+  - `extract_precision_info()`: Extract precision level and method from model ID
+  - `handle_precision_filter()`: Interactive UI for precision filter selection
+  - `do_precision_search()`: Search with precision filter and supplementary search for empty queries
+
+- Supplementary search logic: When initial API results < 20 and precision_level specified, searches all relevant keywords for that precision to ensure comprehensive results
+
+### Fixed
+- Precision filter now works as independent filter (not AND condition)
+- Non-quantized models (16/32-bit) now properly detected and included
+- Empty query + precision filter now returns full results via supplementary search
+
 ## [0.3.5] - 2025-11-25
 
 ### Added
