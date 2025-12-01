@@ -2,7 +2,7 @@
 
 **mlxlm is an Ollama-inspired CLI tool that complements Ollama by focusing on model discovery, exploration, and MLX-optimized experimentation on Apple Silicon.**
 
-While [mlx-lm](https://github.com/ml-explore/mlx-examples/tree/main/llms) focuses on the model execution framework, mlxlm adds a complete user-facing layer: **powerful HuggingFace model search, precision filtering, interactive menus, session management, multiple chat renderers, and more.**
+While [MLX LM](https://github.com/ml-explore/mlx-lm) focuses on the model execution framework, mlxlm adds a complete user-facing layer: **powerful HuggingFace model search, precision filtering, interactive menus, session management, multiple chat renderers, and more.**
 
 ## Why mlxlm?
 
@@ -17,7 +17,7 @@ Ollama excels at integrated model management and inference serving with cross-pl
 
 | Feature | Ollama | mlxlm |
 |---------|--------|-------|
-| **Model Discovery** | Basic (no search) | Advanced (AND/OR/exclude, precision filters) |
+| **Model Discovery** | No search | Advanced → Search (AND/OR/exclude, precision filters) |
 | **Quantization Support** | Primarily GGUF | All HF formats (GGUF/AWQ/GPTQ/MLX/FP16) |
 | **Runtime Type** | Inference server | Lightweight CLI tool |
 | **Apple Silicon** | Good (Metal) | Optimized (MLX native) |
