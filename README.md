@@ -6,10 +6,10 @@ While [MLX LM](https://github.com/ml-explore/mlx-lm) focuses on the model execut
 
 ## Why mlxlm?
 
-**vs. mlx-lm (official):**
-- mlx-lm provides Python APIs and minimal CLI → mlxlm adds rich CLI + interactive UI
-- mlx-lm has no model search → mlxlm searches HuggingFace with advanced filters
-- mlx-lm requires manual model management → mlxlm provides aliases, sessions, and presets
+**vs. MLX LM (official):**
+- MLX LM provides Python APIs and a minimal CLI focused on core execution. mlxlm builds on top of that by adding a richer CLI and interactive tooling.
+- MLX LM doesn't include model discovery. mlxlm adds HuggingFace search with advanced filters (AND/OR/exclude, precision levels).
+- MLX LM requires manual model management. mlxlm provides aliases, sessions, and presets to streamline the workflow.
 
 **vs. Ollama (Different purposes, natural partners):**
 
