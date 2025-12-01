@@ -62,6 +62,24 @@ class TestExtractPrecisionInfo:
         assert result['precision_level'] == 2
         assert result['method'] == 'gguf'
 
+    def test_generic_2bit_detection(self):
+        """Test detection of generic 2-bit without hyphen."""
+        result = extract_precision_info("model-2bit")
+        assert result['precision_level'] == 2
+        assert result['method'] is None
+
+    def test_generic_2bit_hyphenated_detection(self):
+        """Test detection of generic 2-bit with hyphen."""
+        result = extract_precision_info("model-2-bit")
+        assert result['precision_level'] == 2
+        assert result['method'] is None
+
+    def test_generic_2bit_underscore_detection(self):
+        """Test detection of generic 2-bit with underscore."""
+        result = extract_precision_info("model-2_bit")
+        assert result['precision_level'] == 2
+        assert result['method'] is None
+
     # ===== GGUF 3-bit Tests =====
     def test_gguf_q3_k_s_detection(self):
         """Test detection of GGUF Q3_K_S variant."""
@@ -80,6 +98,24 @@ class TestExtractPrecisionInfo:
         result = extract_precision_info("model-Q3_K_L-GGUF")
         assert result['precision_level'] == 3
         assert result['method'] == 'gguf'
+
+    def test_generic_3bit_detection(self):
+        """Test detection of generic 3-bit without hyphen."""
+        result = extract_precision_info("model-3bit")
+        assert result['precision_level'] == 3
+        assert result['method'] is None
+
+    def test_generic_3bit_hyphenated_detection(self):
+        """Test detection of generic 3-bit with hyphen."""
+        result = extract_precision_info("model-3-bit")
+        assert result['precision_level'] == 3
+        assert result['method'] is None
+
+    def test_generic_3bit_underscore_detection(self):
+        """Test detection of generic 3-bit with underscore."""
+        result = extract_precision_info("model-3_bit")
+        assert result['precision_level'] == 3
+        assert result['method'] is None
 
     # ===== GGUF 4-bit Tests =====
     def test_gguf_q4_k_m_detection(self):
@@ -218,6 +254,37 @@ class TestExtractPrecisionInfo:
         result = extract_precision_info("model-32-bit")
         assert result['precision_level'] == 32
         assert result['method'] is None
+
+    def test_32bit_no_hyphen_detection(self):
+        """Test detection of 32bit without hyphen (32bit)."""
+        result = extract_precision_info("model-32bit")
+        assert result['precision_level'] == 32
+        assert result['method'] is None
+
+    def test_16bit_no_hyphen_detection(self):
+        """Test detection of 16bit without hyphen (16bit)."""
+        result = extract_precision_info("model-16bit")
+        assert result['precision_level'] == 16
+        assert result['method'] is None
+
+    def test_5bit_no_hyphen_detection(self):
+        """Test detection of 5bit without hyphen (5bit)."""
+        result = extract_precision_info("model-5bit")
+        assert result['precision_level'] == 5
+        assert result['method'] is None
+
+    def test_4bit_no_hyphen_detection(self):
+        """Test detection of 4bit without hyphen (4bit)."""
+        result = extract_precision_info("model-4bit")
+        assert result['precision_level'] == 4
+        assert result['method'] is None
+
+    def test_underscore_bit_notation(self):
+        """Test detection with underscore separator (e.g., 16_bit, 32_bit)."""
+        result_16 = extract_precision_info("model-16_bit")
+        result_32 = extract_precision_info("model-32_bit")
+        assert result_16['precision_level'] == 16
+        assert result_32['precision_level'] == 32
 
     # ===== Non-quantized Tests =====
     def test_non_quantized_model(self):
@@ -390,6 +457,125 @@ class TestPrecisionFilterLogic:
         # Wrong method fails
         assert not (precision_wrong_method['precision_level'] == state.precision_level and
                     precision_wrong_method['method'] == state.precision_method)
+
+
+class TestTagFallbackDetection:
+    """Test tag-based fallback detection when precision not found in model ID."""
+
+    # ===== Precision Level from Tags =====
+    def test_precision_from_tag_5bit(self):
+        """Test 5-bit detection from tags when not in model ID."""
+        result = extract_precision_info("meta-llama/Llama-2-7B", tags=["5bit", "quantized"])
+        assert result['precision_level'] == 5
+        assert result['method'] is None
+
+    def test_precision_from_tag_16bit(self):
+        """Test 16-bit detection from tags when not in model ID."""
+        result = extract_precision_info("meta-llama/Llama-2-7B", tags=["fp16", "half-precision"])
+        assert result['precision_level'] == 16
+        assert result['method'] is None
+
+    def test_precision_from_tag_32bit(self):
+        """Test 32-bit FP32 detection from tags when not in model ID."""
+        result = extract_precision_info("meta-llama/Llama-2-7B", tags=["fp32", "full-precision"])
+        assert result['precision_level'] == 32
+        assert result['method'] is None
+
+    def test_precision_from_tag_2bit(self):
+        """Test 2-bit detection from tags when not in model ID."""
+        result = extract_precision_info("model-name", tags=["2bit", "quantized"])
+        assert result['precision_level'] == 2
+
+    def test_precision_from_tag_3bit(self):
+        """Test 3-bit detection from tags when not in model ID."""
+        result = extract_precision_info("model-name", tags=["3bit"])
+        assert result['precision_level'] == 3
+
+    def test_precision_from_tag_6bit(self):
+        """Test 6-bit detection from tags when not in model ID."""
+        result = extract_precision_info("model-name", tags=["6bit", "quantized"])
+        assert result['precision_level'] == 6
+
+    # ===== Method from Tags =====
+    def test_method_from_tag_awq(self):
+        """Test AWQ method detection from tags when not in model ID."""
+        result = extract_precision_info("meta-llama/Llama-2-7B", tags=["awq", "quantized"])
+        assert result['method'] == 'awq'
+
+    def test_method_from_tag_gptq(self):
+        """Test GPTQ method detection from tags when not in model ID."""
+        result = extract_precision_info("model-name", tags=["gptq", "int4"])
+        assert result['method'] == 'gptq'
+
+    def test_method_from_tag_gguf(self):
+        """Test GGUF method detection from tags when not in model ID."""
+        result = extract_precision_info("model-name", tags=["gguf", "quantized"])
+        assert result['method'] == 'gguf'
+
+    def test_method_from_tag_mlx(self):
+        """Test MLX method detection from tags when not in model ID."""
+        result = extract_precision_info("model-name", tags=["mlx", "quantized"])
+        assert result['method'] == 'mlx'
+
+    # ===== Combined Precision and Method from Tags =====
+    def test_combined_precision_and_method_from_tags(self):
+        """Test both precision and method detection from tags."""
+        result = extract_precision_info("meta-llama/Llama-2-7B", tags=["5bit", "awq", "quantized"])
+        assert result['precision_level'] == 5
+        assert result['method'] == 'awq'
+
+    # ===== ID Takes Priority Over Tags =====
+    def test_id_takes_priority_over_tags_precision(self):
+        """Test that model ID precision takes priority over tags."""
+        # Model ID says 4-bit, tags say 8-bit
+        result = extract_precision_info("model-4-bit", tags=["8bit"])
+        assert result['precision_level'] == 4  # ID should win
+
+    def test_id_takes_priority_over_tags_method(self):
+        """Test that model ID method takes priority over tags."""
+        # Model ID says AWQ, tags say GPTQ
+        result = extract_precision_info("model-AWQ", tags=["gptq"])
+        assert result['method'] == 'awq'  # ID should win
+
+    # ===== Case Insensitive Tag Matching =====
+    def test_tag_matching_case_insensitive_precision(self):
+        """Test that tag matching is case-insensitive for precision."""
+        result = extract_precision_info("model-name", tags=["5BIT", "Quantized"])
+        assert result['precision_level'] == 5
+
+    def test_tag_matching_case_insensitive_method(self):
+        """Test that tag matching is case-insensitive for method."""
+        result = extract_precision_info("model-name", tags=["AWQ", "Quantized"])
+        assert result['method'] == 'awq'
+
+    # ===== Tags with Multiple Matching Tags =====
+    def test_first_matching_precision_tag_wins(self):
+        """Test that first matching precision tag is used when multiple exist."""
+        # Tags have both 4-bit and 8-bit, should match first found
+        result = extract_precision_info("model-name", tags=["4bit", "8bit"])
+        # 4-bit pattern checked before 8-bit, so 4 should be found first
+        assert result['precision_level'] == 4
+
+    # ===== Empty Tags =====
+    def test_empty_tags_list(self):
+        """Test handling of empty tags list."""
+        result = extract_precision_info("model-name", tags=[])
+        assert result['precision_level'] is None
+        assert result['method'] is None
+
+    def test_tags_with_no_matching_precision(self):
+        """Test tags that don't contain precision information."""
+        result = extract_precision_info("model-name", tags=["instruct", "chat", "mlx"])
+        # Only method might be detected from 'mlx'
+        assert result['method'] == 'mlx'
+        assert result['precision_level'] is None
+
+    # ===== ID with no precision but tags with precision =====
+    def test_fallback_to_tags_when_id_has_no_markers(self):
+        """Test fallback to tags when model ID lacks precision markers."""
+        result = extract_precision_info("meta-llama/Llama-2-7B-Chat", tags=["awq", "4bit"])
+        assert result['precision_level'] == 4
+        assert result['method'] == 'awq'
 
 
 class TestBackwardCompatibility:

@@ -119,6 +119,10 @@ For detailed options and more examples: mlxlm search <query> --help-detail
         help="Results per page (default: 10)"
     )
     search_parser.add_argument(
+        "--hf-limit", type=int, metavar="N",
+        help="HuggingFace API search limit (default: 500 without tags, 100 with tags)"
+    )
+    search_parser.add_argument(
         "--no-interactive", action="store_true",
         help="Non-interactive text output"
     )

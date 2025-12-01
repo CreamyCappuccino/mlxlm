@@ -6,7 +6,7 @@
 
 from __future__ import annotations
 
-__version__ = "0.3.5"
+__version__ = "0.3.6"
 
 import sys
 from cli_flags import build_parser
@@ -76,6 +76,7 @@ def main() -> None:
             precision_method=getattr(args, "method", None),
             sort=getattr(args, "sort", "downloads"),
             limit=getattr(args, "limit", 7),
+            hf_limit=getattr(args, "hf_limit", None),
             no_interactive=getattr(args, "no_interactive", False),
             json_output=getattr(args, "json", False),
             help_detail=getattr(args, "help_detail", False),

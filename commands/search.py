@@ -68,6 +68,10 @@ class SearchState:
         self.precision_method: Optional[str] = None  # v0.3.6: quantization method (awq, gptq, gguf, mlx)
         self.page: int = 0
         self.results_per_page: int = 10
+        self.search_cache: dict = {}  # Session-based cache for empty-query precision searches
+        self.search_type: str = "or"  # "or" (default) or "and" (+ or , delimited)
+        self.search_keywords: list[str] = []  # Parsed keywords for AND/OR filtering
+        self.exclude_keywords: list[str] = []  # Keywords to exclude (! or - prefix)
 
     def has_filters(self) -> bool:
         """Check if any filters are active."""
@@ -179,7 +183,158 @@ def format_updated(updated_at: Optional[str]) -> str:
         return "N/A"
 
 
+# ===== Query Parsing =====
+def parse_search_query(query: str, state: SearchState) -> None:
+    """Parse search query for AND/OR/exclude operators.
+
+    Sets state.search_type, state.search_keywords, and state.exclude_keywords based on query format:
+    - "qwen kimi" (space) → OR search (default)
+    - "qwen+kimi" or "qwen+llama" → AND search
+    - "qwen,kimi" or "qwen,llama" → AND search
+    - "!qwen" or "-qwen" → exclude qwen from results
+    - Combined: "llama+mistral !qwen" → (llama AND mistral) excluding qwen
+    - Mixed: "gpt,20B,!120B" → (gpt AND 20B) excluding 120B
+    """
+    if not query:
+        state.search_type = "or"
+        state.search_keywords = []
+        state.exclude_keywords = []
+        return
+
+    # Strip backslash escapes added by zsh for ! (e.g., '\!qwen' → '!qwen')
+    query = query.replace(r'\!', '!')
+
+    # First, extract exclude keywords (! or - prefix) from the entire query
+    # This handles both space-separated and comma-separated formats
+    exclude_kws = []
+
+    # Handle space-separated exclude keywords (e.g., "qwen !120B")
+    parts = query.split()
+    search_parts = []
+
+    for part in parts:
+        if part.startswith("!") or part.startswith("-"):
+            # Exclude keyword with prefix
+            exclude_kws.append(part[1:])
+        else:
+            search_parts.append(part)
+
+    # Also handle exclude keywords in comma/plus separated lists
+    # e.g., "gpt,!120B" or "llama+!qwen"
+    cleaned_parts = []
+    for part in search_parts:
+        # Split by comma and plus to extract exclude keywords
+        if "," in part or "+" in part:
+            # Reconstruct the part, extracting exclude keywords
+            tokens = []
+            for token in part.replace("+", ",").split(","):
+                token = token.strip()
+                if token.startswith("!") or token.startswith("-"):
+                    exclude_kws.append(token[1:])
+                else:
+                    tokens.append(token)
+            cleaned_parts.append(",".join(tokens) if "," in part else "+".join(tokens))
+        else:
+            cleaned_parts.append(part)
+
+    state.exclude_keywords = exclude_kws
+
+    # Now parse the search keywords (AND/OR)
+    search_query = " ".join(cleaned_parts).strip()
+
+    if not search_query:
+        state.search_type = "or"
+        state.search_keywords = []
+        return
+
+    # Determine search type and extract keywords
+    if "+" in search_query and "," not in search_query:
+        # AND search with + delimiter (only +, no ,)
+        state.search_type = "and"
+        state.search_keywords = [kw.strip() for kw in search_query.split("+") if kw.strip()]
+    elif "," in search_query:
+        # AND search with , delimiter (comma takes precedence)
+        state.search_type = "and"
+        state.search_keywords = [kw.strip() for kw in search_query.split(",") if kw.strip()]
+    else:
+        # OR search (space delimiter, default)
+        state.search_type = "or"
+        state.search_keywords = [kw.strip() for kw in search_query.split() if kw.strip()]
+
+
 # ===== API Functions =====
+def do_precision_search(query: str, state: SearchState) -> list[dict]:
+    """
+    Perform search with precision filter supplementation and session caching.
+
+    If precision filter is set and initial results are limited,
+    search with precision keywords to ensure comprehensive coverage
+    across all naming conventions (16bit, fp16, bf16, etc.).
+
+    For empty queries with precision filters, results are cached in-memory
+    to reduce API usage during the session.
+
+    Args:
+        query: Search query string
+        state: SearchState object with filter settings
+
+    Returns:
+        List of model dictionaries matching the search and filters
+    """
+    # Check cache for empty-query precision searches
+    if not query and state.precision_level:
+        cache_key = (state.precision_level, state.precision_method)
+        if cache_key in state.search_cache:
+            print("💾 Using cached results from this session")
+            return state.search_cache[cache_key]
+
+    # Perform initial search
+    models = search_huggingface(query, state)
+
+    # Supplementary precision keyword search
+    # If precision filter is set and initial results are limited, search with precision keywords
+    # to ensure comprehensive coverage across all naming conventions (16bit, fp16, bf16, etc.)
+    if state.precision_level:
+        from .search_filters import PRECISION_KEYWORDS
+        threshold = 20  # If fewer than 20 models, try augmenting with precision keywords
+
+        if len(models) < threshold:
+            keywords = PRECISION_KEYWORDS.get(state.precision_level, [])
+            supplementary_models = {}
+
+            print(f"💡 Augmenting results with precision keywords: {', '.join(keywords)}")
+
+            for keyword in keywords:
+                # Skip keyword if it matches the original query
+                if query and keyword.lower() in query.lower():
+                    continue
+
+                try:
+                    # Search with precision keyword
+                    keyword_results = search_huggingface(keyword, state)
+
+                    # Add new models (by ID) to supplementary set, avoiding duplicates
+                    for model in keyword_results:
+                        if model.id not in {m.id for m in models}:
+                            supplementary_models[model.id] = model
+                except Exception:
+                    # If individual keyword search fails, continue with others
+                    continue
+
+            # Merge supplementary models with original results
+            if supplementary_models:
+                models.extend(list(supplementary_models.values()))
+                print(f"✅ Added {len(supplementary_models)} supplementary models")
+
+    # Cache results for empty-query precision searches
+    if not query and state.precision_level:
+        cache_key = (state.precision_level, state.precision_method)
+        state.search_cache[cache_key] = models
+        print("💾 Results cached for this session")
+
+    return models
+
+
 def search_huggingface(query: str, state: SearchState) -> list[dict]:
     """Search HuggingFace for models."""
     if HfApi is None:
@@ -207,8 +362,10 @@ def search_huggingface(query: str, state: SearchState) -> list[dict]:
         # Build search parameters
         hf_direction = -1 if state.sort_direction == "desc" else 1  # -1=desc, 1=asc
         # When no tag filter is applied, increase limit to get better representation of all models
-        # Otherwise, 100 is sufficient for filtered results
-        limit = 500 if not state.tags else 100
+        # Otherwise, use a lower limit for filtered results
+        # Default: 500 (no tags), 100 (with tags) - can be customized via state.hf_search_limit
+        default_limit = getattr(state, 'hf_search_limit', None) or (500 if not state.tags else 100)
+        limit = default_limit
         search_params = {
             "search": query,
             "task": "text-generation",
@@ -286,7 +443,7 @@ def search_huggingface(query: str, state: SearchState) -> list[dict]:
             # Model precision filter (v0.3.6)
             if state.precision_level or state.precision_method:
                 from .search_filters import extract_precision_info
-                precision_info = extract_precision_info(model.id)
+                precision_info = extract_precision_info(model.id, tags=model.tags)
 
                 # If precision_level is set, model must match that level
                 if state.precision_level:
@@ -315,6 +472,20 @@ def search_huggingface(query: str, state: SearchState) -> list[dict]:
                 key=size_sort_key,
                 reverse=(state.sort_direction == "desc")
             )
+
+        # Apply AND filtering if search_type is "and"
+        if state.search_type == "and" and state.search_keywords:
+            filtered_models = [
+                m for m in filtered_models
+                if all(kw.lower() in m.id.lower() for kw in state.search_keywords)
+            ]
+
+        # Apply exclude filtering
+        if state.exclude_keywords:
+            filtered_models = [
+                m for m in filtered_models
+                if not any(kw.lower() in m.id.lower() for kw in state.exclude_keywords)
+            ]
 
         return filtered_models
 
@@ -368,6 +539,7 @@ def search_main(
     precision_method: Optional[str] = None,
     sort: str = "downloads",
     limit: int = 7,
+    hf_limit: Optional[int] = None,
     no_interactive: bool = False,
     json_output: bool = False,
     help_detail: bool = False,
@@ -401,6 +573,13 @@ ADVANCED OPTIONS:
   --no-interactive      Non-interactive mode: display all results as plain text
                         without pagination menu
 
+ADVANCED SEARCH SYNTAX:
+  AND search:     llama+mistral       Find models with both llama and mistral
+  OR search:      llama mistral       Find models with llama OR mistral (default with spaces)
+  Exclude:        llama !qwen         Find llama models but exclude qwen
+                  (use ! or - prefix)
+  Combined:       llama+mistral !qwen (llama AND mistral) excluding qwen
+
 EXAMPLES:
   # Basic interactive search
   mlxlm search llama
@@ -416,6 +595,11 @@ EXAMPLES:
 
   # Sort by size, limit results
   mlxlm search gemma --sort size --max-size 10
+
+  # Advanced search examples
+  mlxlm search "llama+mistral"        Find models with both llama and mistral
+  mlxlm search "llama !qwen"          Find llama models excluding qwen
+  mlxlm search "qwen mistral !gpt"    Find qwen OR mistral, excluding gpt
 
   # JSON output for AI/scripts (non-interactive)
   mlxlm search llama --json
@@ -439,6 +623,12 @@ NOTES:
   - Size filter requires safetensors metadata (some models may not have this)
   - Sort by 'size' is done client-side (may be slower for large result sets)
   - Tags are case-insensitive and matched partially
+
+  IMPORTANT: When using special characters (!, +, etc.) in CLI, use quotes to prevent shell expansion:
+    ✓ Correct:   mlxlm search "llama !qwen"
+                 mlxlm search "gpt+mistral"
+    ✗ Incorrect: mlxlm search llama !qwen     (shell expands !)
+                 mlxlm search gpt+mistral     (may cause issues in some shells)
         """)
         return
 
@@ -482,9 +672,41 @@ NOTES:
         state.precision_level = precision_level
     if precision_method:
         state.precision_method = precision_method
+    if hf_limit:
+        state.hf_search_limit = hf_limit
 
-    # Perform search
-    models = search_huggingface(query, state)
+    # Parse query for AND/OR operators
+    parse_search_query(query, state)
+
+    # Handle exclude-only queries (e.g., "!qwen")
+    if not state.search_keywords and state.exclude_keywords:
+        # Search with empty query to get all models, then apply exclude filter
+        api_query = ""
+        models = do_precision_search(api_query, state)
+        print(f"🔍 Searching all models, excluding: {', '.join(state.exclude_keywords)}")
+    # Handle OR search with multiple keywords (search each keyword and merge results)
+    elif state.search_type == "or" and len(state.search_keywords) > 1:
+        models_dict = {}
+        print(f"🔍 OR search: Searching for {', '.join(state.search_keywords)}...")
+
+        for keyword in state.search_keywords:
+            try:
+                keyword_models = do_precision_search(keyword, state)
+                for model in keyword_models:
+                    if model.id not in models_dict:
+                        models_dict[model.id] = model
+            except Exception:
+                continue
+
+        models = list(models_dict.values())
+        print(f"✅ Merged {len(models)} unique models from OR search")
+    else:
+        # For AND search, use only the first keyword for HuggingFace API
+        # (API will perform OR search, then we filter with AND logic client-side)
+        api_query = state.search_keywords[0] if (state.search_type == "and" and state.search_keywords) else query
+
+        # Perform search (with precision filter supplementation if applicable)
+        models = do_precision_search(api_query, state)
 
     # JSON output mode (highest priority)
     if json_output:

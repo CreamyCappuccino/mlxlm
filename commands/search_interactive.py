@@ -8,7 +8,7 @@ from __future__ import annotations
 import re
 import sys
 
-from .search import SearchState, search_huggingface
+from .search import SearchState, search_huggingface, do_precision_search, parse_search_query
 from .search_display import show_detail
 from .search_filters import handle_filters
 
@@ -16,6 +16,7 @@ from .search_filters import handle_filters
 def search_interactive(query: str, state: SearchState, models: list) -> None:
     """Interactive search interface."""
     state.query = query
+    parse_search_query(query, state)
 
     while True:
         # Import here to avoid circular imports
@@ -30,11 +31,18 @@ def search_interactive(query: str, state: SearchState, models: list) -> None:
         print("  N     Next page")
         print("  P     Previous page")
         print("  F     Filters & Sort")
+        print("  C     Change API search limit")
         print("  S     New search")
         print("  D     Display count")
         print("  0     Exit")
         print("\n💡 Tip: Use slash commands for quick actions:")
-        print("   /search qwen    /display 20    /search reset    /exit\n")
+        print("   /search qwen    /display 20    /change 100    /search reset    /exit")
+        print("\nAdvanced search syntax:")
+        print("   /s llama+mistral      AND search (both llama and mistral)")
+        print("   /s llama,instruct     AND search (comma also works)")
+        print("   /s llama mistral      OR search (llama or mistral)")
+        print("   /s llama !qwen        Exclude qwen from results")
+        print("   /s llama+mistral !gpt (llama AND mistral) excluding gpt\n")
 
         choice = input("Your choice: ").strip()
 
@@ -72,7 +80,7 @@ def search_interactive(query: str, state: SearchState, models: list) -> None:
             needs_refetch = handle_filters(state)
             if needs_refetch:
                 print("\n🔍 Re-searching with new settings...")
-                models = search_huggingface(query, state)
+                models = do_precision_search(query, state)
             state.page = 0
             continue
 
@@ -80,8 +88,51 @@ def search_interactive(query: str, state: SearchState, models: list) -> None:
             new_query = input("Enter search query: ").strip()
             if new_query:
                 query = new_query
+                parse_search_query(query, state)
                 state.page = 0
-                models = search_huggingface(query, state)
+
+                # Handle exclude-only queries (e.g., "!qwen")
+                if not state.search_keywords and state.exclude_keywords:
+                    api_query = ""
+                    models = do_precision_search(api_query, state)
+                    print(f"\n🔍 Searching all models, excluding: {', '.join(state.exclude_keywords)}")
+                # Handle OR search with multiple keywords (search each keyword and merge results)
+                elif state.search_type == "or" and len(state.search_keywords) > 1:
+                    models_dict = {}
+                    print(f"\n🔍 OR search: Searching for {', '.join(state.search_keywords)}...")
+
+                    for keyword in state.search_keywords:
+                        try:
+                            keyword_models = do_precision_search(keyword, state)
+                            for model in keyword_models:
+                                if model.id not in models_dict:
+                                    models_dict[model.id] = model
+                        except Exception:
+                            continue
+
+                    models = list(models_dict.values())
+                    print(f"✅ Merged {len(models)} unique models from OR search")
+                else:
+                    # For AND search, use only the first keyword for HuggingFace API
+                    api_query = state.search_keywords[0] if (state.search_type == "and" and state.search_keywords) else query
+                    models = do_precision_search(api_query, state)
+            continue
+
+        if action == "change_hf_limit":
+            try:
+                limit_str = input("Enter HuggingFace API search limit (or 'reset' for default): ").strip().lower()
+                if limit_str == "reset":
+                    state.hf_search_limit = None
+                    print("✅ Reset to default (500 without tags, 100 with tags)")
+                else:
+                    limit = int(limit_str)
+                    if limit > 0:
+                        state.hf_search_limit = limit
+                        print(f"✅ HuggingFace API search limit set to {limit}")
+                    else:
+                        print("❌ Please enter a positive number.")
+            except ValueError:
+                print("❌ Invalid input.")
             continue
 
         if action == "set_display_count":
@@ -192,6 +243,10 @@ def parse_menu_choice(choice: str, max_display: int) -> tuple[str, any]:
     if choice_lower == "f":
         return ("filters", None)
 
+    # Change API search limit (uppercase C only)
+    if choice_lower == "c":
+        return ("change_hf_limit", None)
+
     # New search (uppercase S only)
     if choice_lower == "s":
         return ("new_search", None)
@@ -230,6 +285,29 @@ def parse_slash_command(cmd: str, query: str, state: SearchState, models: list) 
         print("✅ Query reset. Showing all models...")
         return (models, "")
 
+    # /change or /c <limit> or /change reset - change HuggingFace API search limit
+    if cmd.startswith("/change") or cmd.startswith("/c"):
+        parts = cmd.split()
+        if len(parts) == 1:
+            print("❌ Usage: /change <limit> or /change reset")
+            return None
+
+        limit_str = parts[1].lower()
+        if limit_str == "reset":
+            state.hf_search_limit = None
+            print("✅ Reset to default (500 without tags, 100 with tags)")
+        else:
+            try:
+                limit = int(limit_str)
+                if limit > 0:
+                    state.hf_search_limit = limit
+                    print(f"✅ HuggingFace API search limit set to {limit}")
+                else:
+                    print("❌ Please enter a positive number.")
+            except ValueError:
+                print(f"❌ Invalid limit: {limit_str}")
+        return None
+
     # /search or /s <query> - new search
     if cmd.startswith("/search ") or cmd.startswith("/s "):
         # Handle both /search and /s
@@ -237,8 +315,35 @@ def parse_slash_command(cmd: str, query: str, state: SearchState, models: list) 
         new_query = cmd[prefix_len:].strip()
         if new_query:
             state.page = 0
-            models = search_huggingface(new_query, state)
-            print(f"\n🔍 Searching for '{new_query}'...")
+            parse_search_query(new_query, state)
+
+            # Handle exclude-only queries (e.g., "!qwen")
+            if not state.search_keywords and state.exclude_keywords:
+                api_query = ""
+                models = do_precision_search(api_query, state)
+                print(f"\n🔍 Searching all models, excluding: {', '.join(state.exclude_keywords)}")
+            # Handle OR search with multiple keywords (search each keyword and merge results)
+            elif state.search_type == "or" and len(state.search_keywords) > 1:
+                models_dict = {}
+                print(f"\n🔍 OR search: Searching for {', '.join(state.search_keywords)}...")
+
+                for keyword in state.search_keywords:
+                    try:
+                        keyword_models = do_precision_search(keyword, state)
+                        for model in keyword_models:
+                            if model.id not in models_dict:
+                                models_dict[model.id] = model
+                    except Exception:
+                        continue
+
+                models = list(models_dict.values())
+                print(f"✅ Merged {len(models)} unique models from OR search")
+            else:
+                # For AND search, use only the first keyword for HuggingFace API
+                api_query = state.search_keywords[0] if (state.search_type == "and" and state.search_keywords) else new_query
+                models = do_precision_search(api_query, state)
+                print(f"\n🔍 Searching for '{new_query}'...")
+
             return (models, new_query)
         else:
             print("❌ Usage: /search <query>")

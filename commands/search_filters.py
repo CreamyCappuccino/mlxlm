@@ -10,6 +10,66 @@ from typing import Optional
 
 from .search import SearchState, COMMON_TAGS
 
+# Precision level keyword mappings for comprehensive search
+# When precision filter is applied with empty query, these keywords are used to ensure
+# we get models across all naming conventions (e.g., 16bit, 16-bit, fp16, bf16)
+PRECISION_KEYWORDS = {
+    2: [
+        # Generic 2-bit
+        "2bit", "2-bit", "2_bit",
+        # GGUF 2-bit variants
+        "q2_k", "q2_m",
+    ],
+    3: [
+        # Generic 3-bit
+        "3bit", "3-bit", "3_bit",
+        # GGUF 3-bit variants
+        "q3_k_s", "q3_k_m", "q3_k_l",
+    ],
+    4: [
+        # Generic 4-bit
+        "4bit", "4-bit", "4_bit", "int4",
+        # GGUF 4-bit variants
+        "q4_k_s", "q4_k_m", "q4_0", "q4_1",
+        # Quantization methods
+        "awq", "gptq",
+    ],
+    5: [
+        # Generic 5-bit
+        "5bit", "5-bit", "5_bit", "int5",
+        # GGUF 5-bit variants
+        "q5_k_s", "q5_k_m", "q5_0", "q5_1",
+    ],
+    6: [
+        # Generic 6-bit
+        "6bit", "6-bit", "6_bit", "int6",
+        # GGUF 6-bit variants
+        "q6_k",
+    ],
+    8: [
+        # Generic 8-bit
+        "8bit", "8-bit", "8_bit", "int8",
+        # GGUF 8-bit variants
+        "q8_0", "q8_1",
+        # Quantization methods
+        "awq", "gptq",
+    ],
+    16: [
+        # Generic 16-bit
+        "16bit", "16-bit", "16_bit",
+        # FP16 variants
+        "fp16", "float16",
+        # BF16 variants
+        "bf16", "bfloat16",
+    ],
+    32: [
+        # Generic 32-bit
+        "32bit", "32-bit", "32_bit",
+        # FP32 variants
+        "fp32", "float32",
+    ],
+}
+
 
 def handle_filters(state: SearchState) -> bool:
     """Handle filter and sort menu.
@@ -831,24 +891,29 @@ def handle_param_scale_filter(state: SearchState) -> None:
 
 # ===== Model Precision Filter (v0.3.6) =====
 
-def extract_precision_info(model_id: str) -> dict:
+def extract_precision_info(model_id: str, tags: Optional[list] = None) -> dict:
     """
-    Extract model precision level and quantization method from model repo_id.
+    Extract model precision level and quantization method from model repo_id and tags.
 
     Precision levels:
         - Quantized: 2, 3, 4, 5, 6, 8-bit (various methods)
         - Non-quantized: 16, 32-bit (full precision)
+
+    Priority: Tags (fallback) → Model ID (primary)
 
     Examples:
         "cpatonn/Qwen3-Next-80B-A3B-Instruct-AWQ-4bit" →
             {'precision_level': 4, 'method': 'awq'}
         "TheBloke/WizardLM-Q4_K_M-GGUF" →
             {'precision_level': 4, 'method': 'gguf'}
+        "model-id", tags=['5bit'] →
+            {'precision_level': 5, 'method': None}  # from tag fallback
         "meta-llama/Llama-2-7B" (no quantization markers) →
             {'precision_level': None, 'method': None}
 
     Args:
         model_id: Model repository ID (e.g., "org/model-name")
+        tags: Optional list of model tags from HuggingFace (e.g., ['quantized', '4bit', 'awq'])
 
     Returns:
         {
@@ -875,21 +940,21 @@ def extract_precision_info(model_id: str) -> dict:
     # Precision level patterns (order matters - longer/specific patterns first to avoid partial matches)
     precision_patterns = [
         # 32-bit (FP32 - full precision) - check 32 before 3
-        (32, r'32[-]?bit|fp32'),
+        (32, r'32bit|32[-_]?bit|fp32'),
         # 16-bit (FP16, BF16 - non-quantized) - check 16 before 6
-        (16, r'16[-]?bit|fp16|bf16'),
-        # GGUF 2-bit variants
-        (2, r'q2_k|q2_m'),
-        # GGUF 3-bit variants
-        (3, r'q3_k_s|q3_k_m|q3_k_l'),
+        (16, r'16bit|16[-_]?bit|fp16|bf16'),
+        # GGUF 2-bit variants + generic 2-bit
+        (2, r'q2_k|q2_m|2bit|2[-_]?bit'),
+        # GGUF 3-bit variants + generic 3-bit
+        (3, r'q3_k_s|q3_k_m|q3_k_l|3bit|3[-_]?bit'),
         # GGUF 4-bit variants + generic 4-bit
-        (4, r'q4_k_s|q4_k_m|q4_0|q4_1|4[-]?bit|int4(?!-)'),
+        (4, r'q4_k_s|q4_k_m|q4_0|q4_1|4bit|4[-_]?bit|int4(?!-)'),
         # GGUF 5-bit variants + generic 5-bit
-        (5, r'q5_k_s|q5_k_m|q5_0|q5_1|5[-]?bit|int5(?!-)'),
+        (5, r'q5_k_s|q5_k_m|q5_0|q5_1|5bit|5[-_]?bit|int5(?!-)'),
         # GGUF 6-bit variants + generic 6-bit
-        (6, r'q6_k|6[-]?bit|int6(?!-)'),
+        (6, r'q6_k|6bit|6[-_]?bit|int6(?!-)'),
         # 8-bit variants
-        (8, r'q8_0|q8_1|8[-]?bit|int8(?!-)'),
+        (8, r'q8_0|q8_1|8bit|8[-_]?bit|int8(?!-)'),
     ]
 
     # Detect method
@@ -905,6 +970,42 @@ def extract_precision_info(model_id: str) -> dict:
         if re.search(pattern, suffix):
             detected_precision = precision_level
             break
+
+    # Fallback: Check tags if precision_level not found in model_id
+    if detected_precision is None and tags:
+        tags_lower = [tag.lower() for tag in tags]
+
+        # Check for precision level tags
+        if '2bit' in tags_lower:
+            detected_precision = 2
+        elif '3bit' in tags_lower:
+            detected_precision = 3
+        elif '5bit' in tags_lower:
+            detected_precision = 5
+        elif '6bit' in tags_lower:
+            detected_precision = 6
+        elif '16bit' in tags_lower or 'fp16' in tags_lower or 'bf16' in tags_lower:
+            detected_precision = 16
+        elif '32bit' in tags_lower or 'fp32' in tags_lower:
+            detected_precision = 32
+        # 4bit and 8bit are already in model_id patterns, but check tags as well
+        elif '4bit' in tags_lower and detected_precision is None:
+            detected_precision = 4
+        elif '8bit' in tags_lower and detected_precision is None:
+            detected_precision = 8
+
+    # Fallback: Check tags for method if not found in model_id
+    if detected_method is None and tags:
+        tags_lower = [tag.lower() for tag in tags]
+
+        if 'awq' in tags_lower:
+            detected_method = 'awq'
+        elif 'gptq' in tags_lower:
+            detected_method = 'gptq'
+        elif 'gguf' in tags_lower:
+            detected_method = 'gguf'
+        elif 'mlx' in tags_lower:
+            detected_method = 'mlx'
 
     return {
         'precision_level': detected_precision,
