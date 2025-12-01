@@ -260,11 +260,11 @@ mlxlm run <model-name>
 - 📝 `--max-tokens N`: Maximum tokens to generate per turn (default: 2048)
 - ⚡ `--stream-mode {all|final|off}`: Control streaming output (default: all)
   - `all`: Stream all tokens in real-time
-  - `final`: Stream only Harmony final channel content
+  - `final`: Stream only Harmony final channel (memory-efficient for long outputs)
   - `off`: Wait for complete response before displaying
-- 🛑 `--stop "seq"`: Add stop sequences (can be repeated)
-- ⏱️ `--time-limit N`: Hard time limit per turn in seconds (0=off)
-- 🧠 `--reasoning {low|medium|high}`: Hint for reasoning verbosity
+- 🛑 `--stop "seq"`: Add stop sequences (can be repeated, combined with MLXLM_STOP env var)
+- ⏱️ `--time-limit N`: Hard time limit per turn in seconds (0=off) - stops output mid-stream if exceeded
+- 🧠 `--reasoning {low|medium|high}`: Reasoning verbosity hint (prepended to system prompt)
 
 **Examples:**
 ```bash
@@ -364,13 +364,25 @@ mlxlm run gemma3:27b
 export MLXLM_OFFLINE=1
 mlxlm show gemma3:27b
 
-# Add custom stop sequences
+# Add custom stop sequences (combined with CLI --stop)
 export MLXLM_STOP="### END,<|stop|>"
 mlxlm run gemma3:27b
 
 # Override Harmony renderer detection
 export MLXLM_RENDERER=openai_harmony:render_chat
 mlxlm run gemma3:27b --chat harmony
+
+# Force conversation history to always be remembered
+export MLXLM_REMEMBER_ASSISTANT=1
+mlxlm run gemma3:27b --history off  # History still saved due to env var
+
+# Disable default Harmony stop sequences
+export MLXLM_NO_DEFAULT_STOPS=1
+mlxlm run gemma3:27b --chat harmony  # Uses only CLI --stop sequences
+
+# Estimate KV cache for float32 dtype instead of default float16
+export MLXLM_KV_BYTES=4
+mlxlm run gemma3:27b --max-tokens 4096
 ```
 
 ---
