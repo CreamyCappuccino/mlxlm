@@ -5,7 +5,127 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.3.0] - 2025-11-23
+## [0.3.6] - 2025-12-01
+
+### Added
+- **Model Precision Filter** (re-designed from v0.3.6 initial version)
+  - Support for 8 precision levels: 2-bit, 3-bit, 4-bit, 5-bit, 6-bit, 8-bit, 16-bit, 32-bit
+  - Quantization methods: AWQ, GPTQ, GGUF, MLX
+  - GGUF variant support: q2_k, q2_m, q3_k_*, q4_k_*, q5_*, q6_k, q8_*
+  - Non-quantized models (16/32-bit FP16/BF16) fully supported
+  - Precision level is independent filter (specify bit count only to get all methods)
+  - Optional method filtering to narrow results further
+  - Dynamic menu: available methods change based on selected precision
+  - CLI flags: `--precision LEVEL` and optional `--method {awq,gptq,gguf,mlx}`
+  - Tag-based fallback detection for better precision inference
+
+- **Session-based memory caching**
+  - Cache precision filter results within a session
+  - Reduces API calls when revisiting same precision level
+  - Cache cleared between sessions
+
+- **API search limit configuration**
+  - New CLI flag: `--hf-limit N` to specify HuggingFace API result count
+  - Interactive menu option: C to change API search limit
+  - Slash commands: `/change N`, `/c N` for quick configuration
+  - Default: 500 (no tags), 100 (with tags)
+
+- **AND/OR/Exclude search syntax**
+  - AND search: `llama+mistral` or `llama,instruct` (both keywords required)
+  - OR search: `llama mistral` (space-separated, default behavior)
+  - Exclude search: `!qwen` or `-gpt` (prefix notation)
+  - Combined queries: `llama+mistral !qwen` (AND both, exclude qwen)
+  - Exclude-only queries: `/s !qwen` shows all models except qwen
+  - zsh compatibility: automatic conversion of `\!` to `!` for history expansion
+
+### Changed
+- **SearchState extended** with new attributes:
+  - `precision_level`: Optional[int] for precision filtering
+  - `precision_method`: Optional[str] for method filtering
+  - `search_type`: "and" or "or" for AND/OR search mode
+  - `search_keywords`: list[str] for parsed keywords
+  - `exclude_keywords`: list[str] for exclusion keywords
+  - `search_cache`: dict for session-based caching
+  - `hf_search_limit`: Optional[int] for API result count limit
+
+- **Interactive menu updated**
+  - New advanced search syntax hints shown in main menu
+  - Examples for AND/OR/exclude queries
+  - Comma (,) confirmed as working AND delimiter alongside plus (+)
+
+### Technical
+- Comprehensive test suite: 323 tests PASS (37 new tests for v0.3.6)
+- New functions:
+  - `parse_search_query()`: Parse AND/OR/exclude syntax from user input
+  - `extract_precision_info()`: Extract precision level and method from model ID
+  - `handle_precision_filter()`: Interactive UI for precision filter selection
+  - `do_precision_search()`: Search with precision filter and supplementary search for empty queries
+
+- Supplementary search logic: When initial API results < 20 and precision_level specified, searches all relevant keywords for that precision to ensure comprehensive results
+
+### Fixed
+- Precision filter now works as independent filter (not AND condition)
+- Non-quantized models (16/32-bit) now properly detected and included
+- Empty query + precision filter now returns full results via supplementary search
+
+## [0.3.5] - 2025-11-25
+
+### Added
+- **Parameter scale range filter** for `mlxlm search`
+  - New `--param-scale-mode {eq,lt,gt,range}` flag to specify filtering mode
+  - New `--param-scale-min N` and `--param-scale-max N` flags for range mode
+  - Interactive filter menu: Mode 4 for range (min-max, both inclusive)
+  - Support for partial ranges (only min or only max specified)
+
+### Changed
+- **Parameter scale filter refactored** (internal API change)
+  - Renamed `param_compare` → `param_scale_mode` for clarity
+  - Added `param_scale_min` and `param_scale_max` fields to SearchState
+  - Filter now supports 4 modes: eq (=), lt (<), gt (≥), range (min-max)
+  - Preset name generation updated (compatible with v0.3.5 format)
+  - JSON output updated with new field names
+
+### Technical
+- Comprehensive test suite (test_search_v035a_param_range.py) with 30 tests
+- Tests cover: range filtering, boundary conditions, edge cases (zero, large values)
+- Range comparison logic: `min ≤ param ≤ max` (both bounds inclusive)
+- Backward compatible with single-value filtering (eq/lt/gt modes)
+- All 239 tests PASS
+
+### Fixed
+- **SearchState.has_filters()** now correctly detects range filters
+- **get_filter_summary()** properly formats single and range parameters
+- UI correctly swaps min/max if entered in wrong order
+
+## [0.3.5] - 2025-11-25
+
+### Added
+- **Parameter scale filter** for `mlxlm search`
+  - New `--param-scale N` flag to filter models by parameter size (7, 13, 30, etc.)
+  - New `--param-compare {eq,lt,gt}` flag for comparison operators
+    - `eq`: Exact match (e.g., 7B only)
+    - `lt`: Less than (e.g., 13B or smaller)
+    - `gt`: Greater than or equal (e.g., 30B or larger)
+  - Interactive menu option (6) for parameter scale filtering
+  - Automatic extraction from model names (7B, 7-B, 7_B, 7 B, 7 billion formats)
+  - Fallback to model card data when name parsing fails
+
+### Changed
+- Filter menu reorganized: options 1-11 (presets now 9-11 for consistency)
+- SearchState extended with `param_scale` (Optional[int]) and `param_compare` (str) fields
+- `has_filters()` and `get_filter_summary()` updated to include parameter scale info
+- JSON output now includes param_scale and param_compare in filters section
+
+### Technical
+- Added `extract_param_scale()` function to parse parameter sizes from model names
+- Added `handle_param_scale_filter()` for interactive filter input
+- Comprehensive test suite (test_search_v035_param_scale.py) with 24 tests covering:
+  - Name format variations (case-insensitive, hyphen, underscore, space separators)
+  - Comparison operators (eq, lt, gt filtering logic)
+  - Edge cases (zero values, large values, None handling)
+  - Integration with SearchState and JSON output
+
+## [0.3.0] - 2025-11-24
 
 ### Added
 - **New `mlxlm search` command** for searching HuggingFace models

@@ -6,7 +6,7 @@
 
 from __future__ import annotations
 
-__version__ = "0.2.5"
+__version__ = "0.3.5"
 
 import sys
 from cli_flags import build_parser
@@ -68,6 +68,12 @@ def main() -> None:
             max_size=getattr(args, "max_size", None),
             min_downloads=getattr(args, "min_downloads", None),
             updated_within=getattr(args, "updated_within", None),
+            param_scale=getattr(args, "param_scale", None),
+            param_scale_mode=getattr(args, "param_scale_mode", "eq"),
+            param_scale_min=getattr(args, "param_scale_min", None),
+            param_scale_max=getattr(args, "param_scale_max", None),
+            precision_level=getattr(args, "precision", None),
+            precision_method=getattr(args, "method", None),
             sort=getattr(args, "sort", "downloads"),
             limit=getattr(args, "limit", 7),
             no_interactive=getattr(args, "no_interactive", False),

@@ -55,20 +55,34 @@ class SearchState:
     def __init__(self):
         self.query: str = ""
         self.sort_by: str = "downloads"  # downloads, updated, size
+        self.sort_direction: str = "desc"  # desc, asc
         self.max_size_gb: Optional[int] = None
         self.min_downloads: Optional[int] = None
         self.tags: list[str] = []
         self.updated_within_days: Optional[int] = None
+        self.param_scale: Optional[int] = None  # v0.3.5: parameter scale single value (7, 13, 30)
+        self.param_scale_mode: str = "eq"  # eq, lt, gt, range (v0.3.5)
+        self.param_scale_min: Optional[int] = None  # v0.3.5: min for range mode
+        self.param_scale_max: Optional[int] = None  # v0.3.5: max for range mode
+        self.precision_level: Optional[int] = None  # v0.3.6: model precision level (2, 3, 4, 5, 6, 8, 16, 32)
+        self.precision_method: Optional[str] = None  # v0.3.6: quantization method (awq, gptq, gguf, mlx)
         self.page: int = 0
-        self.results_per_page: int = 7
+        self.results_per_page: int = 10
 
     def has_filters(self) -> bool:
         """Check if any filters are active."""
+        param_filter_active = (
+            self.param_scale or
+            (self.param_scale_mode == "range" and (self.param_scale_min or self.param_scale_max))
+        )
+        precision_filter_active = self.precision_level or self.precision_method
         return bool(
             self.max_size_gb or
             self.min_downloads or
             self.tags or
-            self.updated_within_days
+            self.updated_within_days or
+            param_filter_active or
+            precision_filter_active
         )
 
     def get_filter_summary(self) -> list[str]:
@@ -82,28 +96,22 @@ class SearchState:
             filters.append(f"Tags: {', '.join(self.tags)}")
         if self.updated_within_days:
             filters.append(f"Updated within: {self.updated_within_days} days")
+        if self.param_scale_mode == "range" and (self.param_scale_min is not None or self.param_scale_max is not None):
+            filters.append(f"Parameters: {self.param_scale_min}B - {self.param_scale_max}B")
+        elif self.param_scale and self.param_scale_mode in ["eq", "lt", "gt"]:
+            op_symbol = {"eq": "=", "lt": "<", "gt": ">"}[self.param_scale_mode]
+            filters.append(f"Parameters: {op_symbol} {self.param_scale}B")
+        if self.precision_level:
+            precision_str = f"Precision: {self.precision_level}-bit"
+            if self.precision_method:
+                precision_str += f" ({self.precision_method.upper()})"
+            filters.append(precision_str)
+        elif self.precision_method:
+            filters.append(f"Precision: Any level ({self.precision_method.upper()})")
         return filters
 
 
 # ===== Helper Functions =====
-def get_model_color(tags: list[str], repo_id: str) -> str:
-    """Determine color for model based on tags and repo."""
-    tags_lower = [t.lower() for t in tags]
-
-    # Priority: MLX > Quantized > Official > Default
-    if "mlx" in tags_lower:
-        return Colors.GREEN
-
-    if any(tag in tags_lower for tag in ["quantized", "4bit", "8bit", "awq", "gptq", "gguf"]):
-        return Colors.YELLOW
-
-    org = repo_id.split("/")[0] if "/" in repo_id else ""
-    if org in OFFICIAL_ORGS:
-        return Colors.BLUE
-
-    return Colors.RESET
-
-
 def format_size(size_bytes: Optional[int]) -> str:
     """Format size in bytes to human-readable format."""
     if size_bytes is None:
@@ -171,6 +179,7 @@ def format_updated(updated_at: Optional[str]) -> str:
         return "N/A"
 
 
+# ===== API Functions =====
 def search_huggingface(query: str, state: SearchState) -> list[dict]:
     """Search HuggingFace for models."""
     if HfApi is None:
@@ -196,13 +205,17 @@ def search_huggingface(query: str, state: SearchState) -> list[dict]:
         hf_sort = sort_mapping.get(state.sort_by, "downloads")
 
         # Build search parameters
+        hf_direction = -1 if state.sort_direction == "desc" else 1  # -1=desc, 1=asc
+        # When no tag filter is applied, increase limit to get better representation of all models
+        # Otherwise, 100 is sufficient for filtered results
+        limit = 500 if not state.tags else 100
         search_params = {
             "search": query,
             "task": "text-generation",
             "sort": hf_sort,
-            "direction": -1,  # Descending
-            "limit": 100,  # Get more for filtering
-            "expand": ["lastModified", "safetensors"],  # Request expandable fields
+            "direction": hf_direction,
+            "limit": limit,
+            "expand": ["lastModified", "safetensors", "tags"],  # Request expandable fields
         }
 
         # Add tag filters
@@ -214,10 +227,14 @@ def search_huggingface(query: str, state: SearchState) -> list[dict]:
         models = list(api.list_models(**search_params))
 
         # Apply additional filters
+        from .search_filters import extract_param_scale
+
         filtered_models = []
         for model in models:
             # Size filter
-            if state.max_size_gb and model.safetensors:
+            if state.max_size_gb:
+                if not model.safetensors:
+                    continue  # Models without size data are excluded when size filter is active
                 total_size = model.safetensors.get("total", 0)
                 if total_size > state.max_size_gb * (1024 ** 3):
                     continue
@@ -244,12 +261,59 @@ def search_huggingface(query: str, state: SearchState) -> list[dict]:
                 except Exception:
                     pass
 
+            # Parameter scale filter (v0.3.5)
+            if state.param_scale_mode == "range" and (state.param_scale_min or state.param_scale_max):
+                model_params = extract_param_scale(model.id, getattr(model, 'cardData', None))
+                if model_params is None:
+                    continue  # Models with unknown parameter scale are excluded when param filter is active
+
+                if state.param_scale_min and model_params < state.param_scale_min:
+                    continue
+                if state.param_scale_max and model_params > state.param_scale_max:
+                    continue
+            elif state.param_scale and state.param_scale_mode in ["eq", "lt", "gt"]:
+                model_params = extract_param_scale(model.id, getattr(model, 'cardData', None))
+                if model_params is None:
+                    continue  # Models with unknown parameter scale are excluded when param filter is active
+
+                if state.param_scale_mode == "eq" and model_params != state.param_scale:
+                    continue
+                elif state.param_scale_mode == "lt" and model_params >= state.param_scale:
+                    continue
+                elif state.param_scale_mode == "gt" and model_params <= state.param_scale:
+                    continue
+
+            # Model precision filter (v0.3.6)
+            if state.precision_level or state.precision_method:
+                from .search_filters import extract_precision_info
+                precision_info = extract_precision_info(model.id)
+
+                # If precision_level is set, model must match that level
+                if state.precision_level:
+                    if precision_info.get('precision_level') != state.precision_level:
+                        continue
+
+                # If precision_method is set (optionally), model must match that method
+                if state.precision_method:
+                    if precision_info.get('method') != state.precision_method:
+                        continue
+
             filtered_models.append(model)
 
         # Client-side sorting for "size" (HF API doesn't support it)
         if state.sort_by == "size":
+            # Sort by actual size, pushing models with unknown size to the end
+            # In DESC order (large first), N/A should be last → use -inf
+            # In ASC order (small first), N/A should be last → use +inf
+            def size_sort_key(m):
+                if m.safetensors and m.safetensors.get("total"):
+                    return m.safetensors.get("total", 0)
+                # Unknown size goes to the end in both directions
+                return float('-inf') if state.sort_direction == "desc" else float('inf')
+
             filtered_models.sort(
-                key=lambda m: m.safetensors.get("total", float('inf')) if m.safetensors else float('inf')
+                key=size_sort_key,
+                reverse=(state.sort_direction == "desc")
             )
 
         return filtered_models
@@ -261,106 +325,6 @@ def search_huggingface(query: str, state: SearchState) -> list[dict]:
         print("  - Try again later")
         print("  - Visit https://status.huggingface.co/")
         sys.exit(1)
-
-
-def display_results(models: list, state: SearchState) -> None:
-    """Display search results with pagination."""
-    if not models:
-        print("\n❌ No models found matching your search.")
-        print("\n💡 Tips:")
-        print("  - Check spelling")
-        print("  - Try broader terms (e.g., 'llama' instead of 'llama-3.1')")
-        print("  - Adjust or remove filters")
-        return
-
-    # Pagination
-    start_idx = state.page * state.results_per_page
-    end_idx = start_idx + state.results_per_page
-    page_models = models[start_idx:end_idx]
-
-    total_models = len(models)
-    showing_start = start_idx + 1
-    showing_end = min(end_idx, total_models)
-
-    # Header
-    print(f"\n🔍 Found {total_models} model{'s' if total_models != 1 else ''} matching '{state.query}':\n")
-
-    # Column headers
-    print(f" #  {'MODEL NAME':<50} {'SIZE':<10} {'DOWNLOADS':<12} UPDATED")
-
-    # Results
-    for i, model in enumerate(page_models, start=1):
-        repo_id = model.id
-        tags = model.tags or []
-        color = get_model_color(tags, repo_id)
-
-        size = format_size(model.safetensors.get("total") if model.safetensors else None)
-        downloads = format_downloads(model.downloads)
-        updated = format_updated(str(model.lastModified) if model.lastModified else None)
-
-        # Format with color
-        model_display = f"{color}{repo_id}{Colors.RESET}"
-
-        # If model name is too long, use 2-line display
-        MAX_NAME_WIDTH = 50
-        if len(repo_id) > MAX_NAME_WIDTH:
-            # Line 1: Number + Model name only
-            print(f" {i}  {model_display}")
-            # Line 2: Metadata aligned to column positions
-            # Indent = " " + "i" + "  " = 4 chars, then MODEL NAME column (50 chars)
-            indent = " " * (4 + MAX_NAME_WIDTH)
-            print(f"{indent} {size:<10} {downloads:<12} {updated}")
-        else:
-            # Normal single-line display
-            # Account for ANSI color codes in padding
-            padding = MAX_NAME_WIDTH - len(repo_id)
-            print(f" {i}  {model_display}{' ' * padding} {size:<10} {downloads:<12} {updated}")
-
-    # Footer
-    filter_summary = "Filters: " + (", ".join(state.get_filter_summary()) if state.has_filters() else "none")
-    print(f"\n (Showing {showing_start}-{showing_end} of {total_models} | Sorted by: {state.sort_by.capitalize()} | {filter_summary})")
-
-    # Legend
-    print(f"\nLegend: [{Colors.GREEN}Green=MLX{Colors.RESET}] [{Colors.YELLOW}Yellow=Quantized{Colors.RESET}] [{Colors.BLUE}Blue=Official{Colors.RESET}]")
-
-
-def show_detail(model, state: SearchState) -> None:
-    """Show detailed information for a model."""
-    repo_id = model.id
-    tags = model.tags or []
-
-    print("\n" + "━" * 70)
-    print(f"📦 {repo_id}")
-    print("━" * 70 + "\n")
-
-    # Basic info
-    print(f"Description    : {model.cardData.get('description', 'N/A') if model.cardData else 'N/A'}")
-
-    size = format_size(model.safetensors.get("total") if model.safetensors else None)
-    print(f"Size           : {size}")
-
-    # Try to get architecture from config
-    arch = "N/A"
-    if model.cardData and isinstance(model.cardData, dict):
-        arch_list = model.cardData.get("architectures", [])
-        if arch_list:
-            arch = arch_list[0]
-    print(f"Architecture   : {arch}")
-
-    print(f"License        : {model.cardData.get('license', 'N/A') if model.cardData else 'N/A'}")
-    print(f"Downloads      : {model.downloads:,}" if model.downloads else "Downloads      : N/A")
-    print(f"Last updated   : {format_updated(str(model.lastModified)) if model.lastModified else 'N/A'}")
-
-    if tags:
-        print(f"Tags           : {', '.join(tags[:10])}")  # Limit to 10 tags
-
-    print(f"\n🔗 https://huggingface.co/{repo_id}")
-
-    print("\nActions:")
-    print("  1  Pull this model")
-    print("  2  Back to results")
-    print("  0  Exit")
-    print("\n💡 Tip: You can type /exit at any time to cancel.\n")
 
 
 def display_non_interactive(models: list, state: SearchState) -> None:
@@ -390,406 +354,18 @@ def display_non_interactive(models: list, state: SearchState) -> None:
     print("💡 To pull a model: mlxlm pull <repo-id>")
 
 
-def search_interactive(query: str, state: SearchState, models: list) -> None:
-    """Interactive search interface."""
-    state.query = query
-
-    while True:
-        # Display results
-        display_results(models, state)
-
-        # Show menu
-        print("\nOptions:")
-        print("  1-7  Show details")
-        print("  8    Next page (/next)")
-        print("  9    Filters & Sort (/filter)")
-        print("  0    Exit")
-        print("\n💡 Tip: You can type /exit, /next, or /filter at any time.\n")
-
-        choice = input("Your choice: ").strip().lower()
-
-        # Handle exit
-        if choice in ("0", "/exit", "exit", "q", "quit"):
-            print("👋 Bye!")
-            return
-
-        # Handle next page
-        if choice in ("8", "/next", "next"):
-            start_idx = state.page * state.results_per_page
-            end_idx = start_idx + state.results_per_page
-
-            # Check if we're already at the last page
-            if start_idx + state.results_per_page >= len(models):
-                print("\n❗ No more results.")
-                continue
-
-            state.page += 1
-            continue
-
-        # Handle filters
-        if choice in ("9", "/filter", "filter"):
-            handle_filters(state)
-            # Re-search with new filters/sort
-            print("\n🔍 Re-searching with new settings...")
-            models = search_huggingface(query, state)
-            state.page = 0  # Reset to first page
-            continue
-
-        # Handle model selection
-        try:
-            idx = int(choice) - 1
-            start_idx = state.page * state.results_per_page
-
-            if 0 <= idx < state.results_per_page:
-                actual_idx = start_idx + idx
-                if actual_idx < len(models):
-                    model = models[actual_idx]
-                    handle_detail_view(model, state)
-                else:
-                    print("❌ Number out of range. Try again.")
-            else:
-                print("❌ Invalid selection. Choose 1-7, 8, 9, or 0.")
-        except ValueError:
-            print("❌ Invalid input. Please enter a number or command.")
-
-
-def handle_detail_view(model, state: SearchState) -> None:
-    """Handle detail view and actions."""
-    while True:
-        show_detail(model, state)
-
-        choice = input("Choose action: ").strip().lower()
-
-        # Exit
-        if choice in ("0", "/exit", "exit"):
-            print("👋 Bye!")
-            sys.exit(0)
-
-        # Back to results
-        if choice == "2":
-            return
-
-        # Pull model
-        if choice == "1":
-            repo_id = model.id
-            print(f"\n📥 Pulling {repo_id}...")
-
-            # Import pull_model from commands
-            from commands.pull import pull_model
-            pull_model(repo_id)
-
-            # Ask about alias
-            alias_choice = input("\nWould you like to set an alias for this model? [(y)/n]: ").strip().lower()
-            if alias_choice in ("", "y", "yes"):
-                alias_name = input("Enter alias name: ").strip()
-                if alias_name:
-                    # Import alias functionality
-                    from commands.alias import alias_main
-                    from core import repo_to_cache_name
-
-                    cache_key = repo_to_cache_name(repo_id)
-                    alias_main(["add", cache_key, alias_name])
-
-            print(f"\n✅ You can now run: mlxlm run {repo_id}")
-            print("👋 Exiting search...")
-            sys.exit(0)
-
-        print("❌ Invalid choice. Choose 1, 2, or 0.")
-
-
-def handle_filters(state: SearchState) -> None:
-    """Handle filter and sort menu."""
-    # Show current filters and ask if user wants to keep them
-    if state.has_filters() or state.sort_by != "downloads":
-        print("\n" + "━" * 70)
-        print("🔍 Current Filters & Sort")
-        print("━" * 70 + "\n")
-
-        settings = []
-        settings.append(f"Sort by: {state.sort_by.capitalize()}")
-        settings.extend(state.get_filter_summary())
-
-        for setting in settings:
-            print(f"  • {setting}")
-
-        keep = input("\nKeep these settings? [(y)/n]: ").strip().lower()
-        if keep in ("n", "no"):
-            # Clear all filters
-            state.max_size_gb = None
-            state.min_downloads = None
-            state.tags = []
-            state.updated_within_days = None
-            state.sort_by = "downloads"
-            print("\n✅ All settings cleared.")
-
-    # Show filter menu
-    while True:
-        print("\n" + "━" * 70)
-        print("🔍 Filters & Sort")
-        print("━" * 70 + "\n")
-
-        if state.has_filters() or state.sort_by != "downloads":
-            print("Current settings:")
-            print(f"  • Sort by: {state.sort_by.capitalize()}")
-            for filter_text in state.get_filter_summary():
-                print(f"  • {filter_text}")
-            print()
-        else:
-            print("(No filters applied)\n")
-
-        print("Available options:")
-        print("  1  Sort order (downloads/updated/size)")
-        print("  2  Model size (max GB)")
-        print("  3  Minimum downloads")
-        print("  4  Tags (e.g., mlx, quantized, instruct)")
-        print("  5  Last updated (within X days)")
-        print("  6  Clear all filters")
-        print("  0  Back to results")
-        print("\n💡 Tip: You can type /exit at any time to cancel.\n")
-
-        choice = input("Select option: ").strip().lower()
-
-        # Exit
-        if choice in ("0", "/exit", "exit"):
-            return
-
-        # Sort order
-        if choice == "1":
-            handle_sort_menu(state)
-            continue
-
-        # Max size
-        if choice == "2":
-            handle_size_filter(state)
-            continue
-
-        # Min downloads
-        if choice == "3":
-            handle_downloads_filter(state)
-            continue
-
-        # Tags
-        if choice == "4":
-            handle_tags_filter(state)
-            continue
-
-        # Updated within
-        if choice == "5":
-            handle_updated_filter(state)
-            continue
-
-        # Clear all
-        if choice == "6":
-            confirm = input("\nClear all filters? [(y)/n]: ").strip().lower()
-            if confirm in ("", "y", "yes"):
-                state.max_size_gb = None
-                state.min_downloads = None
-                state.tags = []
-                state.updated_within_days = None
-                state.sort_by = "downloads"
-                print("\n✅ All filters cleared.")
-                return  # Back to results
-            continue
-
-        print("❌ Invalid choice. Choose 1-6 or 0.")
-
-
-def handle_sort_menu(state: SearchState) -> None:
-    """Handle sort order selection."""
-    print("\n" + "━" * 70)
-    print("🔄 Sort Order")
-    print("━" * 70 + "\n")
-
-    print(f"Current: {state.sort_by.capitalize()}\n")
-
-    print("Sort by:")
-    print("  1  Downloads    (most popular first)")
-    print("  2  Updated      (most recent first)")
-    print("  3  Size         (smallest first)")
-    print("  0  Cancel\n")
-
-    choice = input("Your choice: ").strip()
-
-    if choice == "1":
-        state.sort_by = "downloads"
-        print("\n✅ Sort order changed to: Downloads (most popular first)")
-    elif choice == "2":
-        state.sort_by = "updated"
-        print("\n✅ Sort order changed to: Updated (most recent first)")
-    elif choice == "3":
-        state.sort_by = "size"
-        print("\n✅ Sort order changed to: Size (smallest first)")
-    elif choice == "0":
-        return
-    else:
-        print("❌ Invalid choice.")
-
-
-def handle_size_filter(state: SearchState) -> None:
-    """Handle model size filter."""
-    print("\n" + "━" * 70)
-    print("💾 Model Size Filter")
-    print("━" * 70 + "\n")
-
-    if state.max_size_gb:
-        print(f"Current: Max {state.max_size_gb} GB\n")
-    else:
-        print("Current: No size limit\n")
-
-    print("Enter maximum model size in GB (or 0 to remove filter):\n")
-    print("Examples:")
-    print("  5   - Small models (quantized, mobile-friendly)")
-    print("  10  - Medium models (8B models, 4-bit)")
-    print("  20  - Large models (13B models, quantized)")
-    print("  50  - Very large models (30B+, 4-bit)")
-    print("  100 - Extra large models (70B+)\n")
-
-    size_input = input("Max size (GB): ").strip()
-
-    if not size_input:
-        return
-
-    try:
-        max_size = int(size_input)
-        if max_size <= 0:
-            state.max_size_gb = None
-            print("\n✅ Size filter removed.")
-        else:
-            state.max_size_gb = max_size
-            print(f"\n✅ Max size set to {max_size} GB")
-    except ValueError:
-        print("❌ Invalid number.")
-
-
-def handle_downloads_filter(state: SearchState) -> None:
-    """Handle minimum downloads filter."""
-    print("\n" + "━" * 70)
-    print("📊 Downloads Filter")
-    print("━" * 70 + "\n")
-
-    if state.min_downloads:
-        print(f"Current: Min {state.min_downloads:,} downloads\n")
-    else:
-        print("Current: No download minimum\n")
-
-    print("Enter minimum downloads (or 0 to remove filter):\n")
-    print("Examples:")
-    print("  100    - Any popular model")
-    print("  1000   - Well-tested models")
-    print("  5000   - Popular models")
-    print("  10000  - Very popular models\n")
-
-    downloads_input = input("Min downloads: ").strip()
-
-    if not downloads_input:
-        return
-
-    try:
-        min_downloads = int(downloads_input)
-        if min_downloads <= 0:
-            state.min_downloads = None
-            print("\n✅ Downloads filter removed.")
-        else:
-            state.min_downloads = min_downloads
-            print(f"\n✅ Min downloads set to {min_downloads:,}")
-    except ValueError:
-        print("❌ Invalid number.")
-
-
-def handle_tags_filter(state: SearchState) -> None:
-    """Handle tags filter with selection menu."""
-    print("\n" + "━" * 70)
-    print("📌 Tag Filter")
-    print("━" * 70 + "\n")
-
-    if state.tags:
-        print(f"Current tags: {', '.join(state.tags)}\n")
-    else:
-        print("Current tags: None\n")
-
-    print("Available tags:")
-    tag_list = list(COMMON_TAGS.keys())
-    for i, tag in enumerate(tag_list, start=1):
-        description = COMMON_TAGS[tag]
-        print(f"  {i:2d}  {tag:<15}  ({description})")
-    print("   0  Back\n")
-
-    print("Select tags (comma-separated, e.g., 1,2,3) or 0 to cancel:\n")
-
-    choice = input("Your choice: ").strip()
-
-    if choice == "0" or not choice:
-        return
-
-    # Parse comma-separated numbers
-    try:
-        indices = [int(x.strip()) - 1 for x in choice.split(",") if x.strip()]
-        selected_tags = []
-        for idx in indices:
-            if 0 <= idx < len(tag_list):
-                selected_tags.append(tag_list[idx])
-
-        if selected_tags:
-            state.tags = selected_tags
-            print(f"\n✅ Tags updated: {', '.join(selected_tags)}")
-        else:
-            print("❌ No valid tags selected.")
-    except ValueError:
-        print("❌ Invalid input. Use comma-separated numbers (e.g., 1,2,3)")
-
-
-def handle_updated_filter(state: SearchState) -> None:
-    """Handle last updated filter."""
-    print("\n" + "━" * 70)
-    print("📅 Last Updated Filter")
-    print("━" * 70 + "\n")
-
-    if state.updated_within_days:
-        print(f"Current: Within {state.updated_within_days} days\n")
-    else:
-        print("Current: Any time\n")
-
-    print("Updated within:")
-    print("  1  7 days       (this week)")
-    print("  2  30 days      (this month)")
-    print("  3  90 days      (last 3 months)")
-    print("  4  180 days     (last 6 months)")
-    print("  5  365 days     (this year)")
-    print("  6  Any time     (remove filter)")
-    print("  0  Cancel\n")
-
-    choice = input("Your choice: ").strip()
-
-    if choice == "1":
-        state.updated_within_days = 7
-        print("\n✅ Filter set to: Updated within 7 days")
-    elif choice == "2":
-        state.updated_within_days = 30
-        print("\n✅ Filter set to: Updated within 30 days")
-    elif choice == "3":
-        state.updated_within_days = 90
-        print("\n✅ Filter set to: Updated within 90 days")
-    elif choice == "4":
-        state.updated_within_days = 180
-        print("\n✅ Filter set to: Updated within 180 days")
-    elif choice == "5":
-        state.updated_within_days = 365
-        print("\n✅ Filter set to: Updated within 365 days")
-    elif choice == "6":
-        state.updated_within_days = None
-        print("\n✅ Filter removed (showing all models)")
-    elif choice == "0":
-        return
-    else:
-        print("❌ Invalid choice.")
-
-
 def search_main(
     query: str,
     tags: Optional[list[str]] = None,
     max_size: Optional[int] = None,
     min_downloads: Optional[int] = None,
     updated_within: Optional[int] = None,
+    param_scale: Optional[int] = None,
+    param_scale_mode: str = "eq",
+    param_scale_min: Optional[int] = None,
+    param_scale_max: Optional[int] = None,
+    precision_level: Optional[int] = None,
+    precision_method: Optional[str] = None,
     sort: str = "downloads",
     limit: int = 7,
     no_interactive: bool = False,
@@ -867,14 +443,16 @@ NOTES:
         return
 
     if not query:
-        print("❌ Search query required.")
-        print("\nUsage:")
-        print("  mlxlm search <query> [options]")
-        print("\nExample:")
-        print("  mlxlm search llama")
-        print("  mlxlm search mistral --max-size 10")
-        print("\nFor detailed help: mlxlm search <query> --help-detail")
-        sys.exit(1)
+        query = ""  # Empty query shows top models
+
+    # Load user config for search settings
+    from core import load_user_config
+    user_config = load_user_config()
+    search_config = user_config.get('search', {})
+
+    # Apply saved default_display_count if limit is at default (10)
+    if limit == 10:  # Default value indicates no explicit --limit flag
+        limit = search_config.get('default_display_count', 10)
 
     # Initialize state
     state = SearchState()
@@ -890,6 +468,20 @@ NOTES:
         state.min_downloads = min_downloads
     if updated_within:
         state.updated_within_days = updated_within
+    if param_scale:
+        state.param_scale = param_scale
+        state.param_scale_mode = param_scale_mode
+    if param_scale_min:
+        state.param_scale_min = param_scale_min
+        state.param_scale_mode = "range"
+    if param_scale_max:
+        state.param_scale_max = param_scale_max
+        if state.param_scale_mode != "range":
+            state.param_scale_mode = "range"
+    if precision_level:
+        state.precision_level = precision_level
+    if precision_method:
+        state.precision_method = precision_method
 
     # Perform search
     models = search_huggingface(query, state)
@@ -897,16 +489,29 @@ NOTES:
     # JSON output mode (highest priority)
     if json_output:
         import json as json_module
+        filters_dict = {
+            "sort_by": state.sort_by,
+            "max_size_gb": state.max_size_gb,
+            "min_downloads": state.min_downloads,
+            "tags": state.tags,
+            "updated_within_days": state.updated_within_days,
+        }
+        if state.param_scale_mode == "range":
+            filters_dict["param_scale_mode"] = "range"
+            filters_dict["param_scale_min"] = state.param_scale_min
+            filters_dict["param_scale_max"] = state.param_scale_max
+        else:
+            filters_dict["param_scale"] = state.param_scale
+            filters_dict["param_scale_mode"] = state.param_scale_mode
+        if state.precision_level:
+            filters_dict["precision_level"] = state.precision_level
+        if state.precision_method:
+            filters_dict["precision_method"] = state.precision_method
+
         output = {
             "query": query,
             "total": len(models),
-            "filters": {
-                "sort_by": state.sort_by,
-                "max_size_gb": state.max_size_gb,
-                "min_downloads": state.min_downloads,
-                "tags": state.tags,
-                "updated_within_days": state.updated_within_days,
-            },
+            "filters": filters_dict,
             "results": [
                 {
                     "repo_id": model.id,
@@ -926,5 +531,6 @@ NOTES:
         display_non_interactive(models, state)
         return
 
-    # Interactive mode
+    # Interactive mode (default)
+    from .search_interactive import search_interactive
     search_interactive(query, state, models)

@@ -72,7 +72,7 @@ For detailed options and more examples: mlxlm search <query> --help-detail
         """,
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
-    search_parser.add_argument("query", help="Search query (e.g., 'llama', 'mistral')")
+    search_parser.add_argument("query", nargs='?', help="Search query (e.g., 'llama', 'mistral')")
     search_parser.add_argument(
         "--filter-tag", action="append", dest="tags",
         help="Filter by tag (can be repeated)"
@@ -87,12 +87,36 @@ For detailed options and more examples: mlxlm search <query> --help-detail
         help="Updated within X days"
     )
     search_parser.add_argument(
+        "--param-scale", type=int, metavar="N",
+        help="Filter by parameter scale (e.g., 7, 13, 30 for 7B, 13B, 30B)"
+    )
+    search_parser.add_argument(
+        "--param-scale-mode", choices=["eq", "lt", "gt", "range"], default="eq",
+        help="Mode for parameter scale: eq (=), lt (<), gt (>), range (min-max) (default: eq)"
+    )
+    search_parser.add_argument(
+        "--param-scale-min", type=int, metavar="N",
+        help="Minimum parameter scale for range mode (e.g., 7)"
+    )
+    search_parser.add_argument(
+        "--param-scale-max", type=int, metavar="N",
+        help="Maximum parameter scale for range mode (e.g., 30)"
+    )
+    search_parser.add_argument(
+        "--precision", type=int, choices=[2, 3, 4, 5, 6, 8, 16, 32],
+        help="Filter by model precision level (2-bit through 32-bit) (v0.3.6)"
+    )
+    search_parser.add_argument(
+        "--method", choices=["awq", "gptq", "gguf", "mlx"],
+        help="Filter by quantization method (optional, works with --precision) (v0.3.6)"
+    )
+    search_parser.add_argument(
         "--sort", choices=["downloads", "updated", "size"], default="downloads",
         help="Sort by downloads/updated/size (default: downloads)"
     )
     search_parser.add_argument(
-        "--limit", type=int, default=7, metavar="N",
-        help="Results per page (default: 7)"
+        "--limit", type=int, default=10, metavar="N",
+        help="Results per page (default: 10)"
     )
     search_parser.add_argument(
         "--no-interactive", action="store_true",
