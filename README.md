@@ -17,7 +17,7 @@ Ollama excels at integrated model management and inference serving with cross-pl
 
 | Feature | Ollama | mlxlm |
 |---------|--------|-------|
-| **Model Discovery** | No search | HF Search (AND/OR/exclude, precision filters) |
+| **Model Discovery** | No search | HuggingFace Search (AND/OR/exclude, precision filters) |
 | **Quantization Support** | Primarily GGUF | All HF formats (GGUF/AWQ/GPTQ/MLX/FP16) |
 | **Runtime Type** | Inference server | Lightweight CLI tool |
 | **Apple Silicon** | Good (Metal) | Optimized (MLX native) |
