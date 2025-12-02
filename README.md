@@ -81,6 +81,12 @@ mlxlm adds the full user-facing layer:
 - **Precision comparison**: Evaluate 2-bit to 32-bit quantization levels for optimal performance
 - **Format exploration**: Compare FP16/BF16 vs quantized models for your use case
 
+### For AI agents & automation:
+- **JSON output mode**: Programmatic model discovery (mlxlm search --json)
+- **Script integration**: Pipe results to automation scripts and AI pipelines
+- **Supported AI agents**: Claude Code, Codex CLI, Gemini CLI (and any tool that can parse JSON)
+- **Batch workflows**: Automated model evaluation, comparison, and selection
+
 ---
 
 ## 🛠️ Installation
@@ -145,7 +151,45 @@ sudo ln -s $(pwd)/mlxlm.py /usr/local/bin/mlxlm
 
 The search feature is the star of v0.3.6 - discover models with powerful filtering and advanced query syntax.
 
-**Basic search:**
+**Interactive menu (recommended for exploration):**
+
+```bash
+mlxlm search
+```
+
+Opens an interactive menu:
+
+```
+🔍 Showing top 500 models matching '':
+
+ #  MODEL NAME                                         SIZE       DOWNLOADS    UPDATED
+ 1  openai-community/gpt2                              130.7 MB   9547.9k      1 year ago
+ 2  Qwen/Qwen2.5-7B-Instruct                           7.1 GB     7703.2k      10 months ago
+ 3  openai/gpt-oss-20b                                 20.0 GB    7395.1k      3 months ago
+ 4  Qwen/Qwen2.5-3B-Instruct                           2.9 GB     7205.7k      1 year ago
+ 5  Qwen/Qwen3-0.6B                                    716.8 MB   6724.9k      4 months ago
+...
+
+Options:
+  1-15  Show details
+  N     Next page
+  P     Previous page
+  F     Filters & Sort
+  C     Change API search limit
+  S     New search
+  D     Display count
+  0     Exit
+
+Advanced search syntax:
+   /s llama+mistral      AND search (both llama and mistral)
+   /s llama,instruct     AND search (comma also works)
+   /s llama mistral      OR search (llama or mistral)
+   /s llama !qwen        Exclude qwen from results
+```
+
+**For comprehensive guide and all available options**, see [USAGE.md](./USAGE.md).
+
+**CLI mode (for automation/scripting):**
 ```bash
 # Interactive search (recommended)
 mlxlm search llama
