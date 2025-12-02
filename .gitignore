@@ -80,3 +80,6 @@ DesignMemo/
 
 # Claude development guide (local only, for Claude Code reference)
 CLAUDE.md
+
+# Unreleased changes tracker (local only, used during release workflow)
+UNRELEASED.md
