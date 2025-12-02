@@ -1,29 +1,25 @@
 # 🧠 MLX-LM CLI Tool
 
-**mlxlm is an Ollama-inspired CLI tool that complements Ollama by focusing on model discovery, exploration, and MLX-optimized experimentation on Apple Silicon.**
+**mlxlm is a powerful HuggingFace model discovery and experimentation CLI tool for Apple Silicon, with Ollama-style commands and rich interactive exploration features.**
 
 While [MLX LM](https://github.com/ml-explore/mlx-lm) focuses on the model execution framework, mlxlm adds a complete user-facing layer: **powerful HuggingFace model search, precision filtering, interactive menus, session management, multiple chat renderers, and more.**
 
 ## Why mlxlm?
 
+**Powerful HuggingFace model discovery for Apple Silicon.**
+
+- Advanced search over 1M+ models (AND/OR/exclude filters, precision levels, parameter scale range)
+- MLX-native execution optimized for Apple Silicon
+- Interactive exploration with dual-mode UI (CLI flags + menu)
+- Lightweight, script-friendly CLI for experimentation and rapid iteration
+- Session management, alias system, presets, and JSON output for automation
+
 **vs. MLX LM (official):**
-- MLX LM provides Python APIs and a minimal CLI focused on core execution. mlxlm builds on top of that by adding a richer CLI and interactive tooling.
-- MLX LM doesn't include model discovery. mlxlm adds HuggingFace search with advanced filters (AND/OR/exclude, precision levels).
-- MLX LM requires manual model management. mlxlm provides aliases, sessions, and presets to streamline the workflow.
 
-**vs. Ollama (Different purposes, natural partners):**
+MLX LM provides core execution (Python API + minimal CLI)
 
-Ollama excels at integrated model management and inference serving with cross-platform support. mlxlm serves a different purpose: **deep model discovery and MLX-optimized experimentation**.
-
-| Feature | Ollama | mlxlm |
-|---------|--------|-------|
-| **Model Discovery** | No search | HuggingFace Search (AND/OR/exclude, precision filters) |
-| **Quantization Support** | Primarily GGUF | All HF formats (GGUF/AWQ/GPTQ/MLX/FP16) |
-| **Runtime Type** | Inference server | Lightweight CLI tool |
-| **Apple Silicon** | Good (Metal) | Optimized (MLX native) |
-| **Use Case** | Production serving | Research & exploration |
-
-**In practice:** Many users run Ollama for production inference while using mlxlm to discover and compare models before pulling. They're complementary tools.
+mlxlm adds the full user-facing layer:
+- HuggingFace model search, precision filtering, aliases, sessions, interactive UI, JSON automation mode, etc.
 
 ---
 
@@ -68,23 +64,22 @@ Ollama excels at integrated model management and inference serving with cross-pl
 
 ## 🎯 Use Cases
 
-### For Ollama users:
-- **Model discovery**: Search HuggingFace's vast model collection using AND/OR/exclude syntax
-- **Precision comparison**: Filter by quantization method, bit depth, and model size
-- **MLX experimentation**: Try Apple Silicon–optimized models before deciding where to deploy
-- **Quick evaluation**: Use interactive search to preview models before pulling to Ollama
-
 ### For MLX-LM users:
 - **Dual-mode workflow**: CLI flags for automation, interactive menus for exploration
 - **Session-based search**: Cache results and iterate quickly across multiple searches
+- **Precision filtering**: AND/OR/exclude searches combined with precision and parameter filters
 - **Model metadata**: Deep dive into configuration, architecture, and precision details
-- **Advanced filtering**: Combine AND/OR/exclude searches with precision and parameter filters
 
 ### For researchers & developers:
-- **Model curation**: Systematically evaluate models by quantization, size, and performance
+- **Model curation**: Systematically evaluate models by quantization method, bit depth, model size, recency, and tags
 - **Automated workflows**: JSON output for integration with scripts and AI pipelines
-- **Custom chat modes**: Multiple renderers, streaming control, and reasoning hints
+- **Custom chat modes**: Multiple renderers, streaming control, and reasoning configuration
 - **Reproducible experiments**: Save search presets and model configurations for team collaboration
+
+### For Apple Silicon enthusiasts:
+- **MLX-optimized benchmarking**: Discover and compare MLX-native models
+- **Precision comparison**: Evaluate 2-bit to 32-bit quantization levels for optimal performance
+- **Format exploration**: Compare FP16/BF16 vs quantized models for your use case
 
 ---
 
@@ -427,7 +422,6 @@ MLX-LM/
 
 ## 📝 Notes
 
-- **Ollama-complementary**: Designed to work alongside Ollama by adding deep model discovery and MLX-optimized tools
 - **Apple Silicon optimized**: Leverages MLX framework for native performance
 - **Model agnostic**: Works with any HuggingFace model compatible with MLX-LM
 - **Extensible**: Alias system, custom renderers, and flexible chat modes for experimentation
