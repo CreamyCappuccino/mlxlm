@@ -1,3 +1,88 @@
-# Local gitignore - not tracked in git
-# Reference .gitignore.txt for project-wide ignore patterns
-.gitignore
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Environment variables
+.env
+.env.local
+
+# Logs
+*.log
+logs/
+
+# Test coverage
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Local alias configuration
+.mlxlm_aliases.json
+
+# MLX-LM user data (settings, history - not tracked in git)
+mlxlm_data/
+
+# Backup files
+*_bkup*.py
+*backup*.py
+
+# Separate projects (not part of mlx-lm)
+trm_exp/
+SELLM/
+run_experiment.sh
+run_experiment_test_for_tre_exp.sh
+
+# Personal setup scripts and backups
+mlxlm.sh
+backup/
+
+# macOS and Claude Code
+.DS_Store
+.claude/
+
+# Release workflow (Cloud session notes, not part of release)
+RELEASE_NOTES_*.md
+TAG_*.md
+
+# Design memos and documentation (not part of release)
+DesignMemo/
+
+# Claude development guide (local only, for Claude Code reference)
+CLAUDE.md
+
+# Unreleased changes tracker (local only, used during release workflow)
+UNRELEASED.md
+
+# Local gitignore reference (not tracked, for internal reference only)
+.gitignore.txt
