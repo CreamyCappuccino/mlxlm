@@ -87,6 +87,22 @@ mlxlm adds the full user-facing layer:
 - **Supported AI agents**: Claude Code, Codex CLI, Gemini CLI (and any tool that can parse JSON)
 - **Batch workflows**: Automated model evaluation, comparison, and selection
 
+### 🧩 Extensible Open-Source Foundation for Other Projects
+
+mlxlm is a lightweight, fully open-source tool with a clean, modular architecture — making it an ideal foundation for new projects.
+
+Unlike closed-source solutions (Ollama, LM Studio), mlxlm can be freely modified, embedded, or repurposed:
+
+- **Embedded** into custom CLIs or automation workflows
+- **Used as a backend** for AI agents via JSON output mode
+- **Integrated** into WebUIs as a HuggingFace model-discovery engine
+- **Extended** with custom filters, renderers, chat logic, or search pipelines
+- **Forked** to build specialized MLX-LM tools or domain-specific interfaces
+- **Code components** incorporated into other projects (search logic, filter implementations, etc.)
+
+MIT license + clear module boundaries = easy to reuse, adapt, and experiment with.
+Ideal for researchers, indie developers, and anyone building on top of MLX.
+
 ---
 
 ## 🛠️ Installation
