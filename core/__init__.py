@@ -9,6 +9,7 @@ import os, sys, json, inspect, importlib
 from pathlib import Path
 from importlib import resources
 from huggingface_hub import HfApi
+from huggingface_hub.errors import RepositoryNotFoundError
 
 # ===== Alias/Paths =====
 HF_CACHE_PATH = os.path.expanduser("~/.cache/huggingface/hub")
@@ -104,6 +105,10 @@ def load_config_for_model(model_id: str) -> dict:
             cfg = HfApi().model_info(model_id).config
             if isinstance(cfg, dict):
                 return cfg
+        except RepositoryNotFoundError:
+            if os.getenv("MLXLM_DEBUG") == "1":
+                print(f"[DEBUG] Model not found on HF: {model_id}")
+            pass
         except (ConnectionError, TimeoutError, ValueError, KeyError) as e:
             if os.getenv("MLXLM_DEBUG") == "1":
                 print(f"[DEBUG] HF API call failed: {e}")
