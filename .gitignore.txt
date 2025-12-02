@@ -47,12 +47,6 @@ logs/
 htmlcov/
 .pytest_cache/
 
-# Local alias configuration
-.mlxlm_aliases.json
-
-# MLX-LM user data (settings, history - not tracked in git)
-mlxlm_data/
-
 # Backup files
 *_bkup*.py
 *backup*.py
