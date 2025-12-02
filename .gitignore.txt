@@ -84,5 +84,5 @@ CLAUDE.md
 # Unreleased changes tracker (local only, used during release workflow)
 UNRELEASED.md
 
-# Local gitignore reference (not tracked, for internal reference only)
-.gitignore.txt
+# Local gitignore file (not tracked in git)
+.gitignore
