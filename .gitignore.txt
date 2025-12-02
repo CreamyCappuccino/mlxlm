@@ -57,32 +57,8 @@ mlxlm_data/
 *_bkup*.py
 *backup*.py
 
-# Separate projects (not part of mlx-lm)
-trm_exp/
-SELLM/
-run_experiment.sh
-run_experiment_test_for_tre_exp.sh
-
-# Personal setup scripts and backups
-mlxlm.sh
-backup/
-
-# macOS and Claude Code
+# macOS
 .DS_Store
-.claude/
-
-# Release workflow (Cloud session notes, not part of release)
-RELEASE_NOTES_*.md
-TAG_*.md
-
-# Design memos and documentation (not part of release)
-DesignMemo/
-
-# Claude development guide (local only, for Claude Code reference)
-CLAUDE.md
-
-# Unreleased changes tracker (local only, used during release workflow)
-UNRELEASED.md
 
 # Local gitignore file (not tracked in git)
 .gitignore
