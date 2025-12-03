@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import re
+import readline
 from typing import Optional
 
 from .search import SearchState, COMMON_TAGS

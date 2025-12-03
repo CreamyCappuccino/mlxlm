@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import os
 import json
+import readline
 
 from core import HF_CACHE_PATH, load_alias_dict, resolve_to_cache_key, alias_file_path
 

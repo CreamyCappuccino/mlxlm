@@ -3,6 +3,8 @@
 
 """Settings menu for mlxlm."""
 
+import readline
+
 from commands.run_utils import _colored
 from .defaults import edit_defaults
 from .colors import edit_colors

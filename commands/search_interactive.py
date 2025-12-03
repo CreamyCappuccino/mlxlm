@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import re
+import readline
 import sys
 
 from .search import SearchState, search_huggingface, do_precision_search, parse_search_query
