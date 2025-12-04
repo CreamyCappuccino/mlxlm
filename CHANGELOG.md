@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.7] - 2025-12-04
+
+### Fixed
+- `load_config_for_model` RepositoryNotFoundError 対応：HuggingFace に存在しないモデル指定時にローカルキャッシュにフォールバック（404 エラー回避）
+
+### Added
+- **Readline サポート**：全インタラクティブメニュー（search, alias, remove, settings）でコマンド履歴ナビゲーション（上下キー）を有効化
+- **未タグ付きモデルフィルタ**：HuggingFace のタスクタグが未設定のモデルを表示するオプション 9 を追加。デフォルト OFF で text-generation のみ検索、toggle で拡張可能
+
+### Changed
+- **フィルタメニュー UX 改善**：プリセット操作を数字（10-12）から文字ショートカット（C/S/L/D）に変更
+  - C = Clear all filters
+  - S = Save preset
+  - L = Load preset
+  - D = Delete preset
+
 ## [0.3.6] - 2025-12-01
 
 ### Added
