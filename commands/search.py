@@ -66,6 +66,7 @@ class SearchState:
         self.param_scale_max: Optional[int] = None  # v0.3.5: max for range mode
         self.precision_level: Optional[int] = None  # v0.3.6: model precision level (2, 3, 4, 5, 6, 8, 16, 32)
         self.precision_method: Optional[str] = None  # v0.3.6: quantization method (awq, gptq, gguf, mlx)
+        self.include_untagged: bool = False  # v0.3.7: include models without task tags (e.g., unclassified LLMs)
         self.page: int = 0
         self.results_per_page: int = 10
         self.search_cache: dict = {}  # Session-based cache for empty-query precision searches
@@ -368,12 +369,15 @@ def search_huggingface(query: str, state: SearchState) -> list[dict]:
         limit = default_limit
         search_params = {
             "search": query,
-            "task": "text-generation",
             "sort": hf_sort,
             "direction": hf_direction,
             "limit": limit,
             "expand": ["lastModified", "safetensors", "tags"],  # Request expandable fields
         }
+
+        # Add task filter (text-generation) unless user wants to include untagged models
+        if not state.include_untagged:
+            search_params["task"] = "text-generation"
 
         # Add tag filters
         if state.tags:

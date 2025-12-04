@@ -145,10 +145,11 @@ def handle_filters(state: SearchState) -> bool:
         print("  6  Parameter scale (7B, 13B, 30B, etc.)")
         print("  7  Last updated (within X days)")
         print("  8  Model Precision (2-bit, 4-bit, 8-bit, 16-bit, 32-bit)")
-        print("  9  Clear all filters")
-        print("  10 Save current filters as preset")
-        print("  11 Load preset")
-        print("  12 Delete preset")
+        print("  9  Include untagged models (e.g., Apple CLaRa)")
+        print("  C  Clear all filters")
+        print("  S  Save current filters as preset")
+        print("  L  Load preset")
+        print("  D  Delete preset")
         print("  0  Back to results")
         print("\n💡 Tip: You can type /exit at any time to cancel.\n")
 
@@ -213,8 +214,15 @@ def handle_filters(state: SearchState) -> bool:
             handle_precision_filter(state)
             continue
 
-        # Clear all
+        # Include untagged models (v0.3.7)
         if choice == "9":
+            state.include_untagged = not state.include_untagged
+            status = "enabled" if state.include_untagged else "disabled"
+            print(f"\n✅ Include untagged models: {status}")
+            continue
+
+        # Clear all
+        if choice in ("c", "clear"):
             confirm = input("\nClear all filters? [(y)/n]: ").strip().lower()
             if confirm in ("", "y", "yes"):
                 state.max_size_gb = None
@@ -227,6 +235,7 @@ def handle_filters(state: SearchState) -> bool:
                 state.param_scale_max = None
                 state.precision_level = None
                 state.precision_method = None
+                state.include_untagged = False
                 state.sort_by = "downloads"
                 state.sort_direction = "desc"
                 print("\n✅ All filters cleared.")
@@ -235,7 +244,7 @@ def handle_filters(state: SearchState) -> bool:
             continue
 
         # Save preset
-        if choice == "10":
+        if choice in ("s", "save"):
             print("\n" + "━" * 70)
             print("💾 Save as Preset")
             print("━" * 70 + "\n")
@@ -250,7 +259,7 @@ def handle_filters(state: SearchState) -> bool:
             continue
 
         # Load preset
-        if choice == "11":
+        if choice in ("l", "load"):
             presets = list_presets()
             if not presets:
                 print("\n❌ No presets available. Save one first!")
@@ -296,7 +305,7 @@ def handle_filters(state: SearchState) -> bool:
             continue
 
         # Delete preset
-        if choice == "12":
+        if choice in ("d", "delete"):
             presets = list_presets()
             if not presets:
                 print("\n❌ No presets available.")
