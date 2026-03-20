@@ -385,7 +385,9 @@ def handle_sort_direction_menu(state: SearchState) -> None:
 
     print("Sort direction:")
     print("  1  Descending   (↓ largest/most popular/newest first)")
-    print("  2  Ascending    (↑ smallest/least popular/oldest first)")
+    print("  2  Ascending    (↑ within fetched results only — HuggingFace API no longer")
+    print("                     supports server-side ascending sort, so results are sorted")
+    print("                     within the top ~500 fetched models, not across all of HF)")
     print("  0  Cancel\n")
 
     choice = input("Your choice: ").strip()

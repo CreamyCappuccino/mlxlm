@@ -152,7 +152,10 @@ def display_results(models: list, state: SearchState) -> None:
 
     # Footer
     filter_summary = "Filters: " + (", ".join(state.get_filter_summary()) if state.has_filters() else "none")
-    direction = "↓" if state.sort_direction == "desc" else "↑"
+    if state.sort_direction == "desc":
+        direction = "↓"
+    else:
+        direction = "↑ (within fetched results)"
     print(f"\n (Showing {showing_start}-{showing_end} of {total_models} | Sorted by: {state.sort_by.capitalize()} {direction} | {filter_summary})")
 
     # Legend

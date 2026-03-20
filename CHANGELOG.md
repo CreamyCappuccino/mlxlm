@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.8] - 2026-03-20
+
+### Fixed
+- **HuggingFace API 互換性修正**：`huggingface_hub` の API 変更に対応
+  - `direction` パラメータ廃止 → 削除（HF API は常に降順で返す仕様に）
+  - `task` パラメータ廃止 → `pipeline_tag` に変更
+- **Ascending ソートの制限を UI に明示**：HF API が降順固定になったため、ASC ソートは取得した上位 ~500 件の中でのみ有効。メニューとフッター表示にその旨を追記
+
 ## [0.3.7] - 2025-12-04
 
 ### Fixed

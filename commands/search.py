@@ -361,23 +361,26 @@ def search_huggingface(query: str, state: SearchState) -> list[dict]:
         hf_sort = sort_mapping.get(state.sort_by, "downloads")
 
         # Build search parameters
-        hf_direction = -1 if state.sort_direction == "desc" else 1  # -1=desc, 1=asc
         # When no tag filter is applied, increase limit to get better representation of all models
         # Otherwise, use a lower limit for filtered results
         # Default: 500 (no tags), 100 (with tags) - can be customized via state.hf_search_limit
         default_limit = getattr(state, 'hf_search_limit', None) or (500 if not state.tags else 100)
         limit = default_limit
+        # Note: HuggingFace API removed the `direction` parameter (huggingface_hub >= 1.0).
+        # Results are always fetched in descending order (most popular/newest first).
+        # Ascending sort (sort_direction == "asc") is applied client-side on the fetched set,
+        # so it reflects order within the top ~500 results, not across all of HuggingFace.
         search_params = {
             "search": query,
             "sort": hf_sort,
-            "direction": hf_direction,
             "limit": limit,
             "expand": ["lastModified", "safetensors", "tags"],  # Request expandable fields
         }
 
         # Add task filter (text-generation) unless user wants to include untagged models
+        # Note: `task` was renamed to `pipeline_tag` in huggingface_hub >= 1.0
         if not state.include_untagged:
-            search_params["task"] = "text-generation"
+            search_params["pipeline_tag"] = "text-generation"
 
         # Add tag filters
         if state.tags:
