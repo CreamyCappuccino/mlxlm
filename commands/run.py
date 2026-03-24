@@ -8,7 +8,6 @@ from __future__ import annotations
 import os
 import time
 
-from mlx_lm import load, generate, stream_generate
 
 # prompt-toolkit imports
 try:
@@ -82,6 +81,7 @@ def run_model(
         time_limit: Hard time limit per turn in seconds (0=off)
         history_mode: Conversation history mode ('on'=full context, 'off'=Q&A only)
     """
+    from mlx_lm import load, generate, stream_generate
     # Load user config for settings and colors
     user_config = load_user_config()
     show_context_stats = user_config.get('defaults', {}).get('show_context_stats', False)

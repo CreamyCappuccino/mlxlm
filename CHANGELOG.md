@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.9] - 2026-03-20
+
+### Fixed
+- **起動時クラッシュ修正**：`mlx_lm` がインポートできない環境で `mlxlm list` や `--help` 等の全コマンドが `ModuleNotFoundError` で落ちていた問題を修正。`from mlx_lm import ...` を `run_model()` 関数内への遅延インポートに変更し、`run` コマンド実行時のみロードされるように
+
 ## [0.3.8] - 2026-03-20
 
 ### Fixed
